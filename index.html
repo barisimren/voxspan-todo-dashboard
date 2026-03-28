@@ -143,7 +143,7 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 <script>
 // ── Firebase setup ────────────────────────────────────────────────────────────
 let db, STATE_DOC, NOTES_DOC, CUSTOM_DOC;
-let suppressListener = false;
+let lastSaveTime = 0;
 
 try {
   firebase.initializeApp({
@@ -173,7 +173,7 @@ window.showSyncDot = function(ok) {
 // ── Save state (done/prio/owners/comments) ────────────────────────────────────
 window.saveToFirebase = function() {
   if (!STATE_DOC) return;
-  suppressListener = true;
+  lastSaveTime = Date.now();
   const state = {};
   document.querySelectorAll('.item[data-id]').forEach(item => {
     const id = item.dataset.id;
@@ -190,7 +190,7 @@ window.saveToFirebase = function() {
   STATE_DOC.set(state)
     .then(() => window.showSyncDot(true))
     .catch(e => console.warn('State save error:', e));
-  setTimeout(() => suppressListener = false, 1500);
+
 };
 
 window.saveCustomToFirebase = function() {
@@ -211,7 +211,14 @@ window.startFirebaseListeners = function() {
 
   // 1. State listener — ONLY updates done/prio/owners/comments, NEVER touches DOM structure
   STATE_DOC.onSnapshot(snap => {
-    if (suppressListener || !snap.exists) return;
+    // Skip if this snapshot was triggered by our own save (within 800ms)
+    if (!snap.exists) {
+      // No Firebase data yet — show UI with defaults
+      const bar = document.getElementById('overview-bar');
+      if (bar) bar.style.opacity = '1';
+      return;
+    }
+    if (Date.now() - lastSaveTime < 800) return;
     const state = snap.data();
     if (!state) return;
 
@@ -256,6 +263,9 @@ window.startFirebaseListeners = function() {
     updateAll();
     refreshDoneGroups();
     refreshFocusTab();
+    // Reveal UI once Firebase has loaded real state
+    const bar = document.getElementById('overview-bar');
+    if (bar) bar.style.opacity = '1';
   });
 
   // 2. Custom tasks listener — only fires when custom tasks change
@@ -312,7 +322,7 @@ window.startFirebaseListeners = function() {
     <div class="header-right">Launch Dashboard &nbsp;·&nbsp; March 2026</div>
   </div>
 </header>
-<div class="overview">
+<div class="overview" id="overview-bar" style="opacity:0;transition:opacity .3s">
   <div class="overview-top">
     <div><div class="overall-label">Overall progress</div><div class="overall-pct" id="overall-pct">0%</div></div>
     <div class="mini-stats">
