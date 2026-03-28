@@ -141,10 +141,8 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-// ── Firebase setup ────────────────────────────────────────────────────────────
-let db, STATE_DOC, NOTES_DOC, CUSTOM_DOC;
-let lastSaveTime = 0;
-let lastCustomSaveTime = 0;
+let db, DOC;
+let isSaving = false;
 
 try {
   firebase.initializeApp({
@@ -156,12 +154,9 @@ try {
     appId: "1:630457670269:web:02f8da305a84c656e32f14"
   });
   db = firebase.firestore();
-  STATE_DOC  = db.collection('vox').doc('state');   // done/prio/owners/comments per task id
-  NOTES_DOC  = db.collection('vox').doc('notes');   // tab notes
-  CUSTOM_DOC = db.collection('vox').doc('custom');  // custom tasks only
+  DOC = db.collection('vox2').doc('data');
 } catch(e) { console.warn('Firebase init failed:', e); }
 
-// ── Sync indicator ────────────────────────────────────────────────────────────
 window.showSyncDot = function(ok) {
   const dot = document.getElementById('sync-dot');
   const lbl = document.getElementById('sync-lbl');
@@ -171,161 +166,141 @@ window.showSyncDot = function(ok) {
   setTimeout(() => { dot.style.background = '#C4C2D8'; lbl.textContent = 'Live'; }, 2000);
 };
 
-// ── Save state (done/prio/owners/comments) ────────────────────────────────────
-window.saveToFirebase = function() {
-  if (!STATE_DOC) return;
-  lastSaveTime = Date.now();
-  const state = {};
+// Build full state object from DOM
+function buildFullState() {
+  const tasks = {};
   document.querySelectorAll('.item[data-id]').forEach(item => {
     const id = item.dataset.id;
     const ps = item.querySelector('[data-role="prio"]');
     const box = document.getElementById('comment-' + id);
-    state[id] = {
+    tasks[id] = {
       done:    item.querySelector('.checkbox').classList.contains('done'),
       prio:    ps ? ps.value : 'later',
       owners:  ownerMap[id] || [],
-      comment: box ? box.value : ''
+      comment: box ? box.value : '',
+      custom:  id.startsWith('c') ? {
+        title:   item.querySelector('.item-title').textContent.trim(),
+        note:    (item.querySelector('.item-note-text') || {}).textContent || '',
+        groupId: (item.closest('[id^="items-"]') || {}).id || '',
+        tab:     (item.closest('.panel') || {}).id || ''
+      } : null
     };
   });
-  STATE_DOC.set(state, { merge: true })
-    .then(() => window.showSyncDot(true))
-    .catch(e => console.warn('State save error:', e));
+  return tasks;
+}
 
-};
+// Apply state from Firebase to DOM
+function applyState(tasks) {
+  if (!tasks) return;
 
-window.saveCustomToFirebase = function() {
-  if (!CUSTOM_DOC) return;
-  lastCustomSaveTime = Date.now();
-  CUSTOM_DOC.set({ tasks: JSON.stringify(customTasks) })
-    .catch(e => console.warn('Custom save error:', e));
+  // 1. Remove custom tasks not in Firebase
+  document.querySelectorAll('.item[data-id^="c"]').forEach(el => {
+    if (!tasks[el.dataset.id]) el.remove();
+  });
+
+  // 2. Add custom tasks from Firebase not in DOM
+  Object.keys(tasks).forEach(id => {
+    if (!id.startsWith('c')) return;
+    const t = tasks[id];
+    if (!t.custom) return;
+    if (document.querySelector('[data-id="' + id + '"]')) return; // already exists
+    const groupId = t.custom.groupId.replace('items-', '');
+    const container = document.getElementById('items-' + groupId);
+    if (!container) return;
+    const tab = t.custom.tab.replace('panel-', '');
+    const item = { id, title: t.custom.title, note: t.custom.note, prio: t.prio, owner: '', custom: true };
+    container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
+    if (!customTasks[groupId]) customTasks[groupId] = [];
+    customTasks[groupId].push(item);
+  });
+
+  // 3. Update state for all tasks
+  Object.keys(tasks).forEach(id => {
+    const item = document.querySelector('[data-id="' + id + '"]');
+    if (!item) return;
+    const t = tasks[id];
+    const cb = item.querySelector('.checkbox');
+    const title = item.querySelector('.item-title');
+
+    // Done
+    if (t.done === true  && !cb.classList.contains('done')) { cb.classList.add('done');    title.classList.add('done'); }
+    if (t.done === false &&  cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
+
+    // Priority
+    if (t.prio) {
+      const ps = item.querySelector('[data-role="prio"]');
+      if (ps && ps.value !== t.prio) { ps.value = t.prio; ps.className = 'ctrl prio-' + t.prio; }
+      item.dataset.prio = t.prio;
+      const tag = document.getElementById('prio-tag-' + id);
+      if (tag) { tag.className = 'tag tag-' + t.prio; tag.textContent = PRIO_LABELS[t.prio]; }
+    }
+
+    // Owners
+    if (t.owners) { ownerMap[id] = t.owners; renderOwnerChips(id); }
+
+    // Comment
+    if (t.comment !== undefined) {
+      const box = document.getElementById('comment-' + id);
+      const lbl = document.getElementById('comment-lbl-' + id);
+      if (box && box.value !== t.comment) {
+        box.value = t.comment;
+        if (t.comment.trim()) {
+          box.style.display = 'block';
+          if (lbl) lbl.textContent = 'Hide note';
+          updateNoteDot(id, true);
+        }
+      }
+    }
+  });
+}
+
+window.saveToFirebase = function() {
+  if (!DOC || isSaving) return;
+  isSaving = true;
+  DOC.set({ tasks: buildFullState(), notes: {} }, { merge: true })
+    .then(() => { window.showSyncDot(true); isSaving = false; })
+    .catch(e => { console.warn('Save error:', e); isSaving = false; });
 };
 
 window.saveNotesToFirebase = function(tab, val) {
-  if (!NOTES_DOC) return;
-  const u = {}; u[tab] = val;
-  NOTES_DOC.set(u, { merge: true }).catch(e => console.warn('Notes error:', e));
+  if (!DOC) return;
+  const u = {}; u['notes.' + tab] = val;
+  DOC.update(u).catch(e => console.warn('Notes error:', e));
 };
 
-// ── Listeners ─────────────────────────────────────────────────────────────────
 window.startFirebaseListeners = function() {
-  if (!STATE_DOC) return;
+  if (!DOC) return;
+  let localSaveTime = 0;
 
-  // 1. State listener — ONLY updates done/prio/owners/comments, NEVER touches DOM structure
-  STATE_DOC.onSnapshot(snap => {
-    // Skip if this snapshot was triggered by our own save (within 800ms)
+  // Override saveToFirebase to track save time
+  const origSave = window.saveToFirebase;
+  window.saveToFirebase = function() {
+    localSaveTime = Date.now();
+    origSave();
+  };
+
+  DOC.onSnapshot(snap => {
+    // Skip our own saves for 1 second
+    if (Date.now() - localSaveTime < 1000) return;
     if (!snap.exists) {
-      // No Firebase data yet — show UI with defaults
-      const bar = document.getElementById('overview-bar');
-      if (bar) bar.style.opacity = '1';
+      document.getElementById('overview-bar').style.opacity = '1';
       return;
     }
-    if (Date.now() - lastSaveTime < 800) return;
-    const state = snap.data();
-    if (!state) return;
-
-    Object.keys(state).forEach(id => {
-      const item = document.querySelector('[data-id="' + id + '"]');
-      if (!item) return;
-      const s = state[id];
-      const cb    = item.querySelector('.checkbox');
-      const title = item.querySelector('.item-title');
-
-      // Done
-      if (s.done === true  && !cb.classList.contains('done')) { cb.classList.add('done');    title.classList.add('done'); }
-      if (s.done === false &&  cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
-
-      // Priority
-      if (s.prio) {
-        const ps = item.querySelector('[data-role="prio"]');
-        if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
-        item.dataset.prio = s.prio;
-        const tag = document.getElementById('prio-tag-' + id);
-        if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
-      }
-
-      // Owners
-      if (s.owners) { ownerMap[id] = s.owners; renderOwnerChips(id); }
-
-      // Comment
-      if (s.comment !== undefined) {
-        const box = document.getElementById('comment-' + id);
-        const lbl = document.getElementById('comment-lbl-' + id);
-        if (box && box.value !== s.comment) {
-          box.value = s.comment;
-          if (s.comment.trim()) {
-            box.style.display = 'block';
-            if (lbl) lbl.textContent = 'Hide note';
-            updateNoteDot(id, true);
-          }
-        }
-      }
-    });
-
+    const data = snap.data();
+    if (!data) return;
+    applyState(data.tasks);
+    // Apply notes
+    if (data.notes) {
+      Object.keys(data.notes).forEach(tab => {
+        const key = (TASKS[tab] && TASKS[tab].noteId) || ('notes-' + tab);
+        const el = document.getElementById(key);
+        if (el && el.value !== data.notes[tab]) el.value = data.notes[tab];
+      });
+    }
     updateAll();
     refreshDoneGroups();
     refreshFocusTab();
-    // Reveal UI once Firebase has loaded real state
-    const bar = document.getElementById('overview-bar');
-    if (bar) bar.style.opacity = '1';
-  });
-
-  // 2. Custom tasks listener — re-adds tasks and applies their saved state
-  CUSTOM_DOC.onSnapshot(snap => {
-    if (!snap.exists) return;
-    const data = snap.data();
-    if (!data || !data.tasks) return;
-
-    // Fetch STATE_DOC first, THEN rebuild custom tasks with correct state
-    STATE_DOC.get().then(stateSnap => {
-      const state = (stateSnap.exists && stateSnap.data()) || {};
-
-      try {
-        const ct = JSON.parse(data.tasks);
-        // Clear existing custom tasks from DOM
-        document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
-        Object.keys(customTasks).forEach(k => delete customTasks[k]);
-        // Re-add with state already applied
-        Object.keys(ct).forEach(groupId => {
-          const container = document.getElementById('items-' + groupId);
-          if (!container) return;
-          const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
-          (ct[groupId] || []).forEach(item => {
-            // Apply saved state before rendering
-            const s = state[item.id];
-            if (s) {
-              item.done  = s.done  !== undefined ? s.done  : item.done;
-              item.prio  = s.prio  || item.prio;
-            }
-            container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
-            if (!customTasks[groupId]) customTasks[groupId] = [];
-            customTasks[groupId].push(item);
-            // Apply owners
-            if (s && s.owners) { ownerMap[item.id] = s.owners; renderOwnerChips(item.id); }
-          });
-        });
-      } catch(e) { console.warn('Custom tasks restore error:', e); }
-
-      updateAll();
-      refreshDoneGroups();
-      refreshFocusTab();
-    }).catch(e => {
-      console.warn('STATE_DOC fetch error:', e);
-      updateAll();
-      refreshDoneGroups();
-      refreshFocusTab();
-    });
-  });
-
-  // 3. Notes listener
-  NOTES_DOC.onSnapshot(snap => {
-    if (!snap.exists) return;
-    const notes = snap.data();
-    if (!notes) return;
-    Object.keys(notes).forEach(tab => {
-      const key = (TASKS[tab] && TASKS[tab].noteId) || ('notes-' + tab);
-      const el = document.getElementById(key);
-      if (el && el.value !== notes[tab]) el.value = notes[tab];
-    });
+    document.getElementById('overview-bar').style.opacity = '1';
   });
 };
 </script>
@@ -338,7 +313,13 @@ window.startFirebaseListeners = function() {
       <span id="sync-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C4C2D8;transition:background .3s"></span>
       <span id="sync-lbl">Live</span>
     </div>
+    <div style="display:flex;align-items:center;gap:12px">
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#8A8AA8">
+      <span id="sync-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C4C2D8;transition:background .3s"></span>
+      <span id="sync-lbl">Live</span>
+    </div>
     <div class="header-right">Launch Dashboard &nbsp;·&nbsp; March 2026</div>
+  </div>
   </div>
 </header>
 <div class="overview" id="overview-bar" style="opacity:0;transition:opacity .3s">
@@ -397,16 +378,16 @@ const TASK_TABS=['brand','pitch','legal','product','gtm','fundraising','team','9
 const TASKS={
   brand:{groups:[
     {id:'brand-g0',label:'Foundation',items:[
-      {id:'b1',title:'Define brand voice pillars',note:'Curious · Confident · Responsible · Playful',prio:'done',owner:'Baris'},
-      {id:'b2',title:'Write voice statement',note:'"Warm enough that consumers want to answer honestly…"',prio:'done',owner:'Baris'},
-      {id:'b3',title:'Lock colour system',note:'5 scales · 7 stops each · Purple anchor · Mint accent',prio:'done',owner:'Baris'},
-      {id:'b4',title:'Set typography system',note:'Space Grotesk Bold/Light + DM Sans for PPTX',prio:'done',owner:'Baris'},
-      {id:'b5',title:'Write brand voice document',note:'Voxspan_Brand_Voice_and_Colors.docx — exported',prio:'done',owner:'Baris'},
+      {id:'b1',title:'Define brand voice pillars',note:'Curious · Confident · Responsible · Playful',done:true,prio:'done',owner:'Baris'},
+      {id:'b2',title:'Write voice statement',note:'"Warm enough that consumers want to answer honestly…"',done:true,prio:'done',owner:'Baris'},
+      {id:'b3',title:'Lock colour system',note:'5 scales · 7 stops each · Purple anchor · Mint accent',done:true,prio:'done',owner:'Baris'},
+      {id:'b4',title:'Set typography system',note:'Space Grotesk Bold/Light + DM Sans for PPTX',done:true,prio:'done',owner:'Baris'},
+      {id:'b5',title:'Write brand voice document',note:'Voxspan_Brand_Voice_and_Colors.docx — exported',done:true,prio:'done',owner:'Baris'},
     ]},
     {id:'brand-g1',label:'Taglines & Messaging',items:[
-      {id:'b6',title:'Lock primary tagline',note:'"Where opinions become insight."',prio:'done',owner:'Baris'},
-      {id:'b7',title:'Lock campaign taglines',note:'"Finally, someone asked." + 4 context taglines',prio:'done',owner:'Baris'},
-      {id:'b8',title:'Build voice-in-action library',note:'Push · Result reveal · Streak · Empty state · Referral',prio:'done',owner:'Baris'},
+      {id:'b6',title:'Lock primary tagline',note:'"Where opinions become insight."',done:true,prio:'done',owner:'Baris'},
+      {id:'b7',title:'Lock campaign taglines',note:'"Finally, someone asked." + 4 context taglines',done:true,prio:'done',owner:'Baris'},
+      {id:'b8',title:'Build voice-in-action library',note:'Push · Result reveal · Streak · Empty state · Referral',done:true,prio:'done',owner:'Baris'},
       {id:'b9',title:'Extend voice-in-action library',note:'Onboarding · B2B landing page · Error states · Pro upsell',prio:'week',owner:'Didem U'},
       {id:'b10',title:'Write B2B messaging framework',note:'Landing page copy · One-liner · Sales deck language',prio:'later',owner:''},
     ]},
@@ -421,10 +402,10 @@ const TASKS={
 
   pitch:{groups:[
     {id:'pitch-g0',label:'Completed',items:[
-      {id:'p1',title:'Fix broken copy on stats slide (54% adults rallies)',prio:'done',owner:'Baris'},
-      {id:'p2',title:'Fix Custom Questions price inconsistency (€450 vs €999)',prio:'done',owner:'Baris'},
-      {id:'p3',title:'Fix "Woxspan" typo on market opportunity slide',prio:'done',owner:'Baris'},
-      {id:'p4',title:'Rebuild GTM slide with 6–9 month honest timeline',prio:'done',owner:'Baris'},
+      {id:'p1',title:'Fix broken copy on stats slide (54% adults rallies)',done:true,prio:'done',owner:'Baris'},
+      {id:'p2',title:'Fix Custom Questions price inconsistency (€450 vs €999)',done:true,prio:'done',owner:'Baris'},
+      {id:'p3',title:'Fix "Woxspan" typo on market opportunity slide',done:true,prio:'done',owner:'Baris'},
+      {id:'p4',title:'Rebuild GTM slide with 6–9 month honest timeline',done:true,prio:'done',owner:'Baris'},
     ]},
     {id:'pitch-g1',label:'Outstanding',items:[
       {id:'p5',title:'Finish pitch deck — remaining typos and slides',prio:'now',owner:'Baris',wip:true},
@@ -595,8 +576,6 @@ function removeOwner(id,owner){
   applyFilters();
 }
 
-function getDoneItems(container){ return [...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done')); }
-
 function refreshDoneGroups(){
   TASK_TABS.forEach(tab=>{
     const data=TASKS[tab];
@@ -604,23 +583,12 @@ function refreshDoneGroups(){
     data.groups.forEach(g=>{
       const container=document.getElementById('items-'+g.id);
       if(!container)return;
-      const doneItems=getDoneItems(container);
+      const doneItems=[...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done'));
+      const undoneItems=[...container.querySelectorAll('.item')].filter(i=>!i.querySelector('.checkbox.done'));
       let toggle=container.parentElement.querySelector('.done-toggle');
-      if(doneItems.length===0){
-        if(toggle)toggle.remove();
-        container.querySelectorAll('.item').forEach(i=>i.style.display='');
-        return;
-      }
+      if(doneItems.length===0){if(toggle)toggle.remove();return;}
       const collapsed=toggle?toggle.dataset.collapsed==='true':true;
-      // Re-query and apply visibility to ALL items in container
-      [...container.querySelectorAll('.item')].forEach(i=>{
-        const isDone=!!i.querySelector('.checkbox.done');
-        if(isDone) i.style.display=collapsed?'none':'';
-        else i.style.display='';
-      });
-      const label = collapsed
-        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`
-        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`;
+      doneItems.forEach(i=>i.style.display=collapsed?'none':'');
       if(!toggle){
         toggle=document.createElement('button');
         toggle.className='done-toggle';
@@ -629,15 +597,15 @@ function refreshDoneGroups(){
         toggle.addEventListener('click',()=>{
           const c=toggle.dataset.collapsed==='true';
           toggle.dataset.collapsed=(!c).toString();
-          // Re-query at click time
-          const current=getDoneItems(container);
-          current.forEach(i=>i.style.display=c?'':'none');
+          doneItems.forEach(i=>i.style.display=c?'':'none');
           toggle.innerHTML=c
-            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${current.length})`
-            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${current.length})`;
+            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`
+            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`;
         });
       }
-      toggle.innerHTML=label;
+      toggle.innerHTML=collapsed
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`;
     });
   });
 }
@@ -696,7 +664,7 @@ function refreshFocusTab(){
   panel.innerHTML=html;
 }
 
-function uid(){return 'c'+Date.now()+''+Math.floor(Math.random()*9999);}
+function uid(){return 'c'+(idCounter++);}
 
 function makeItemHTML(item,tab){
   const isDone=item.done||false;
@@ -854,7 +822,6 @@ function addTask(groupId,tab){
   customTasks[groupId].push(item);
   closeForm(groupId);
   saveState();
-  if(window.saveCustomToFirebase) window.saveCustomToFirebase();
   updateAll();
   refreshDoneGroups();
   refreshFocusTab();
@@ -869,7 +836,6 @@ function deleteTask(id,tab){
   });
   localStorage.removeItem('vox-comment-'+id);
   saveState();
-  if(window.saveCustomToFirebase) window.saveCustomToFirebase();
   updateAll();
 }
 
@@ -1135,24 +1101,13 @@ function loadState(){
 }
 
 buildTasks();
-
-// Init owner chips with defaults
-document.querySelectorAll('.item[data-id]').forEach(item => {
-  const id = item.dataset.id;
-  if (!ownerMap[id]) {
-    const def = item.dataset.owner;
-    ownerMap[id] = def ? [def] : [];
-  }
-  renderOwnerChips(id);
-});
-
+loadState();
 updateAll();
 applyFilters();
 refreshDoneGroups();
 refreshFocusTab();
-
-// Start Firebase — updates state on top of defaults
-try { if (window.startFirebaseListeners) window.startFirebaseListeners(); } catch(e) { console.warn('Firebase unavailable'); }
+// Start Firebase real-time sync after DOM is built
+try { if (window.startFirebaseListeners) window.startFirebaseListeners(); } catch(e) { console.warn('Firebase sync unavailable'); }
 
 // Close open comment boxes when clicking outside
 document.addEventListener('click', function(e) {
