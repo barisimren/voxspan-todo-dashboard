@@ -144,6 +144,7 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 // ── Firebase setup ────────────────────────────────────────────────────────────
 let db, STATE_DOC, NOTES_DOC, CUSTOM_DOC;
 let lastSaveTime = 0;
+let lastCustomSaveTime = 0;
 
 try {
   firebase.initializeApp({
@@ -194,6 +195,7 @@ window.saveToFirebase = function() {
 
 window.saveCustomToFirebase = function() {
   if (!CUSTOM_DOC) return;
+  lastCustomSaveTime = Date.now();
   CUSTOM_DOC.set({ tasks: JSON.stringify(customTasks) })
     .catch(e => console.warn('Custom save error:', e));
 };
@@ -267,7 +269,7 @@ window.startFirebaseListeners = function() {
     if (bar) bar.style.opacity = '1';
   });
 
-  // 2. Custom tasks listener — only fires when custom tasks change
+  // 2. Custom tasks listener — re-adds tasks and applies their saved state
   CUSTOM_DOC.onSnapshot(snap => {
     if (!snap.exists) return;
     const data = snap.data();
@@ -291,9 +293,36 @@ window.startFirebaseListeners = function() {
       });
     } catch(e) { console.warn('Custom tasks restore error:', e); }
 
-    updateAll();
-    refreshDoneGroups();
-    refreshFocusTab();
+    // After re-adding, apply saved state from STATE_DOC
+    STATE_DOC.get().then(stateSnap => {
+      if (stateSnap.exists) {
+        const state = stateSnap.data();
+        document.querySelectorAll('.item[data-id^="c"]').forEach(item => {
+          const id = item.dataset.id;
+          const s = state[id];
+          if (!s) return;
+          const cb = item.querySelector('.checkbox');
+          const title = item.querySelector('.item-title');
+          if (s.done === true)  { cb.classList.add('done');    title.classList.add('done'); }
+          if (s.done === false) { cb.classList.remove('done'); title.classList.remove('done'); }
+          if (s.prio) {
+            const ps = item.querySelector('[data-role="prio"]');
+            if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
+            item.dataset.prio = s.prio;
+            const tag = document.getElementById('prio-tag-' + id);
+            if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
+          }
+          if (s.owners) { ownerMap[id] = s.owners; renderOwnerChips(id); }
+        });
+      }
+      updateAll();
+      refreshDoneGroups();
+      refreshFocusTab();
+    }).catch(() => {
+      updateAll();
+      refreshDoneGroups();
+      refreshFocusTab();
+    });
   });
 
   // 3. Notes listener
