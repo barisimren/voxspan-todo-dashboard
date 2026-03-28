@@ -5,582 +5,1113 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voxspan — Launch Dashboard</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #FAFAFA; color: #1E2D7A; min-height: 100vh; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#FAFAFA;color:#1E2D7A;min-height:100vh}
+header{background:#fff;border-bottom:1px solid #E2E0F0;padding:.9rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.logo{font-size:18px;font-weight:700;letter-spacing:.06em;background:linear-gradient(90deg,#5B3FD0 60%,#00D4A8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-right{font-size:12px;color:#8A8AA8}
+.overview{background:#fff;border-bottom:1px solid #E2E0F0;padding:1rem 2rem}
+.overview-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px;flex-wrap:wrap;gap:1rem}
+.overall-label{font-size:12px;color:#8A8AA8;margin-bottom:3px}
+.overall-pct{font-size:26px;font-weight:700;color:#1E2D7A;line-height:1}
+.mini-stats{display:flex;gap:1.5rem}
+.mini-stat-num{font-size:18px;font-weight:700;color:#5B3FD0}
+.mini-stat-label{font-size:11px;color:#8A8AA8;margin-top:1px}
+.prog-bar{height:5px;background:#F0EFF8;border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#5B3FD0 60%,#00D4A8 100%);border-radius:3px;transition:width .4s}
+.toolbar{background:#fff;border-bottom:1px solid #E2E0F0;padding:.6rem 2rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.search-box{flex:1;min-width:160px;padding:6px 12px 6px 30px;border:1px solid #E2E0F0;border-radius:20px;font-size:13px;font-family:inherit;color:#1E2D7A;outline:none;background:#FAFAFA url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238A8AA8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 9px center}
+.search-box:focus{border-color:#5B3FD0;background-color:#fff}
+.filter-select{padding:5px 24px 5px 10px;border:1px solid #E2E0F0;border-radius:20px;font-size:12px;font-family:inherit;color:#4A4A68;background:#FAFAFA url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%238A8AA8'/%3E%3C/svg%3E") no-repeat right 8px center;appearance:none;outline:none;cursor:pointer}
+.filter-select:focus{border-color:#5B3FD0}
+.filter-label{font-size:12px;color:#8A8AA8;white-space:nowrap}
+.clear-btn{font-size:12px;color:#5B3FD0;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:10px}
+.clear-btn:hover{background:#F2EFFE}
+.search-count{font-size:12px;color:#8A8AA8;white-space:nowrap}
+.tab-bar{background:#fff;border-bottom:1px solid #E2E0F0;padding:0 2rem;display:flex;overflow-x:auto}
+.tab{padding:11px 15px;font-size:13px;font-weight:500;color:#8A8AA8;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;user-select:none}
+.tab:hover{color:#5B3FD0}
+.tab.active{color:#5B3FD0;border-bottom-color:#5B3FD0}
+.tab-badge{display:inline-block;font-size:10px;padding:1px 5px;border-radius:10px;margin-left:4px;background:#F0EFF8;color:#8A8AA8;font-weight:600}
+.tab.active .tab-badge{background:#F2EFFE;color:#5B3FD0}
+main{max-width:980px;margin:0 auto;padding:1.5rem 1.5rem 4rem}
+.section-prog{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem}
+.sec-bar{flex:1;height:3px;background:#F0EFF8;border-radius:2px;overflow:hidden}
+.sec-bar-fill{height:100%;background:linear-gradient(90deg,#5B3FD0,#00D4A8);border-radius:2px;transition:width .3s}
+.sec-pct{font-size:12px;color:#8A8AA8;min-width:32px;text-align:right}
+.group{margin-bottom:1.8rem}
+.group-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8A8AA8;margin-bottom:.5rem;padding-bottom:.4rem;border-bottom:1px solid #E2E0F0}
+.phase-pill{display:inline-block;background:#F2EFFE;color:#5B3FD0;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin-bottom:.8rem}
+.item{border-radius:8px;margin-bottom:5px;background:#fff;border:1px solid #EEECf8;box-shadow:0 1px 3px rgba(91,63,208,.04);transition:all .15s}
+.item:hover{border-color:#BBA8F7;box-shadow:0 2px 8px rgba(91,63,208,.09);transform:translateY(-1px)}
+.item.hidden{display:none}
+.item-main{display:grid;grid-template-columns:20px 1fr auto;align-items:start;gap:10px;padding:9px 10px}
+.checkbox{width:18px;height:18px;border-radius:4px;border:1.5px solid #C4C2D8;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .15s;cursor:pointer;flex-shrink:0}
+.checkbox.done{background:#5B3FD0;border-color:#5B3FD0}
+.checkbox.done::after{content:'';display:block;width:10px;height:10px;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='1.5,5 4,7.5 8.5,2' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
+.text-block{min-width:0;cursor:pointer}
+.item-title{font-size:13px;color:#1E2D7A;line-height:1.4;font-weight:500}
+.item-title.done{color:#C4C2D8;text-decoration:line-through;font-weight:400}
+.item-note-text{font-size:12px;color:#8A8AA8;margin-top:2px;line-height:1.4}
+.item-tags{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;align-items:center}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block}
+.tag-now{background:#FFE8E8;color:#A03030}
+.tag-week{background:#FFF3E0;color:#BF6000}
+.tag-later{background:#F0EFF8;color:#8A8AA8}
+.tag-critical{background:#FFE0E0;color:#900}
+.tag-done{background:#E0FAF5;color:#007A5E}
+.tag-wip{background:#F2EFFE;color:#5B3FD0}
+.owner-tag{background:#EBF0FD;color:#1A3282;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600}
+.delete-btn{background:none;border:none;cursor:pointer;color:#C4C2D8;font-size:16px;padding:2px 4px;border-radius:4px;line-height:1;margin-top:1px}
+.delete-btn:hover{color:#A03030;background:#FFE8E8}
+.controls{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0}
+select.ctrl{font-size:11px;font-family:inherit;border-radius:20px;padding:3px 20px 3px 8px;border:1px solid #E2E0F0;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%238A8AA8'/%3E%3C/svg%3E") no-repeat right 6px center;font-weight:600;min-width:108px}
+select.ctrl:focus{border-color:#5B3FD0}
+select.prio-now{background-color:#FFE8E8;color:#A03030;border-color:#FFD0D0}
+select.prio-week{background-color:#FFF3E0;color:#BF6000;border-color:#FFE0B0}
+select.prio-later{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
+select.prio-critical{background-color:#FFE0E0;color:#900;border-color:#FFBBBB}
+select.prio-done{background-color:#E0FAF5;color:#007A5E;border-color:#B3F1E4}
+select.owner-sel{background-color:#F2EFFE;color:#5B3FD0;border-color:#DDD4FC}
+select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
+.item-comment-wrap{padding:0 10px 8px 42px}
+.comment-toggle{font-size:11px;color:#8A8AA8;background:none;border:none;cursor:pointer;padding:2px 0;display:flex;align-items:center;gap:4px}
+.comment-toggle:hover{color:#5B3FD0}
+.note-dot{display:inline-block;width:6px;height:6px;background:#5B3FD0;border-radius:50%;margin-left:4px;vertical-align:middle;flex-shrink:0}
+.comment-box{width:100%;margin-top:4px;padding:7px 10px;border:1px solid #E2E0F0;border-radius:8px;font-size:12px;font-family:inherit;color:#1E2D7A;background:#fff;resize:none;outline:none;line-height:1.5;min-height:54px}
+.comment-box:focus{border-color:#5B3FD0}
+.comment-box::placeholder{color:#C4C2D8}
 
-/* HEADER */
-header { background: #fff; border-bottom: 1px solid #E2E0F0; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-.logo { font-size: 18px; font-weight: 700; letter-spacing: 0.06em; background: linear-gradient(90deg, #5B3FD0 60%, #00D4A8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.header-right { font-size: 12px; color: #8A8AA8; }
+/* ADD TASK BUTTON */
+.add-task-btn{display:flex;align-items:center;gap:6px;padding:7px 12px;font-size:12px;color:#8A8AA8;background:none;border:1.5px dashed #E2E0F0;border-radius:8px;cursor:pointer;font-family:inherit;width:100%;margin-top:4px;transition:all .15s}
+.add-task-btn:hover{color:#5B3FD0;border-color:#BBA8F7;background:#F9F8FF}
 
-/* PROGRESS OVERVIEW */
-.overview { background: #fff; border-bottom: 1px solid #E2E0F0; padding: 1.25rem 2rem; }
-.overview-top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; gap: 1rem; flex-wrap: wrap; }
-.overall-label { font-size: 12px; color: #8A8AA8; margin-bottom: 4px; }
-.overall-pct { font-size: 28px; font-weight: 700; color: #1E2D7A; line-height: 1; }
-.mini-stats { display: flex; gap: 1.5rem; }
-.mini-stat { text-align: center; }
-.mini-stat-num { font-size: 18px; font-weight: 700; color: #5B3FD0; }
-.mini-stat-label { font-size: 11px; color: #8A8AA8; margin-top: 2px; }
-.progress-bar { height: 6px; background: #F0EFF8; border-radius: 3px; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, #5B3FD0 60%, #00D4A8 100%); border-radius: 3px; transition: width 0.4s ease; }
+/* ADD TASK FORM */
+.add-task-form{background:#fff;border:1px solid #DDD4FC;border-radius:10px;padding:14px;margin-top:6px;display:none}
+.add-task-form.open{display:block}
+.form-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.form-input{flex:1;min-width:140px;padding:7px 10px;border:1px solid #E2E0F0;border-radius:8px;font-size:13px;font-family:inherit;color:#1E2D7A;outline:none;background:#FAFAFA}
+.form-input:focus{border-color:#5B3FD0;background:#fff}
+.form-input::placeholder{color:#C4C2D8}
+.form-select{padding:7px 24px 7px 10px;border:1px solid #E2E0F0;border-radius:8px;font-size:12px;font-family:inherit;color:#4A4A68;background:#FAFAFA url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%238A8AA8'/%3E%3C/svg%3E") no-repeat right 8px center;appearance:none;outline:none;cursor:pointer}
+.form-select:focus{border-color:#5B3FD0}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.btn-add{padding:6px 16px;background:#5B3FD0;color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-add:hover{background:#3D27A0}
+.btn-cancel{padding:6px 14px;background:none;color:#8A8AA8;border:1px solid #E2E0F0;border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-cancel:hover{background:#F0EFF8}
 
-/* TABS */
-.tab-bar { background: #fff; border-bottom: 1px solid #E2E0F0; padding: 0 2rem; display: flex; gap: 0; overflow-x: auto; }
-.tab { padding: 12px 18px; font-size: 13px; font-weight: 500; color: #8A8AA8; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; user-select: none; }
-.tab:hover { color: #5B3FD0; }
-.tab.active { color: #5B3FD0; border-bottom-color: #5B3FD0; }
-.tab-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; background: #F0EFF8; color: #8A8AA8; font-weight: 600; }
-.tab.active .tab-badge { background: #F2EFFE; color: #5B3FD0; }
-
-/* MAIN */
-main { max-width: 820px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
-
-/* SECTION PROGRESS */
-.section-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
-.section-bar { flex: 1; height: 4px; background: #F0EFF8; border-radius: 2px; overflow: hidden; }
-.section-bar-fill { height: 100%; background: linear-gradient(90deg, #5B3FD0, #00D4A8); border-radius: 2px; transition: width 0.3s; }
-.section-pct { font-size: 12px; color: #8A8AA8; min-width: 36px; text-align: right; }
-
-/* GROUPS */
-.group { margin-bottom: 2rem; }
-.group-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8A8AA8; margin-bottom: 0.6rem; padding-bottom: 0.5rem; border-bottom: 1px solid #E2E0F0; }
-
-/* ITEMS */
-.item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.1s; margin-bottom: 3px; }
-.item:hover { background: #F0EFF8; }
-.checkbox { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #C4C2D8; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-.checkbox.done { background: #5B3FD0; border-color: #5B3FD0; }
-.checkbox.done::after { content: ''; display: block; width: 10px; height: 10px; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='1.5,5 4,7.5 8.5,2' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-size: contain; background-repeat: no-repeat; }
-.text-block { flex: 1; min-width: 0; }
-.item-title { font-size: 13px; color: #1E2D7A; line-height: 1.4; font-weight: 500; }
-.item-title.done { color: #C4C2D8; text-decoration: line-through; font-weight: 400; }
-.item-note { font-size: 12px; color: #8A8AA8; margin-top: 2px; line-height: 1.4; }
-.tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
-.tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 600; }
-.tag-done { background: #E0FAF5; color: #007A5E; }
-.tag-wip { background: #F2EFFE; color: #5B3FD0; }
-.tag-now { background: #FFE8E8; color: #A03030; }
-.tag-week { background: #FFF3E0; color: #BF6000; }
-.tag-later { background: #F0EFF8; color: #8A8AA8; }
-.tag-critical { background: #FFE8E8; color: #A03030; }
-.tag-high { background: #FFF3E0; color: #BF6000; }
-.tag-medium { background: #E0FAF5; color: #007A5E; }
-.tag-founder { background: #F2EFFE; color: #5B3FD0; }
-.tag-dev { background: #EBF0FD; color: #1A3282; }
-
-/* PANEL VIEWS */
-.panel { display: none; }
-.panel.active { display: block; }
-
-/* NOTES BOX */
-.notes-section { margin-top: 2rem; }
-.notes-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8A8AA8; margin-bottom: 0.6rem; }
-.notes-box { width: 100%; min-height: 120px; border: 1px solid #E2E0F0; border-radius: 10px; padding: 12px 14px; font-size: 13px; font-family: inherit; color: #1E2D7A; background: #fff; resize: vertical; outline: none; transition: border-color 0.15s; line-height: 1.6; }
-.notes-box:focus { border-color: #5B3FD0; }
-.notes-box::placeholder { color: #C4C2D8; }
-.notes-saved { font-size: 11px; color: #00A882; margin-top: 6px; opacity: 0; transition: opacity 0.3s; }
-.notes-saved.show { opacity: 1; }
-
-/* PIPELINE TABLE */
-.pipeline-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 2rem; }
-.pipeline-table th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #8A8AA8; padding: 8px 10px; border-bottom: 1px solid #E2E0F0; }
-.pipeline-table td { padding: 10px 10px; border-bottom: 1px solid #F0EFF8; color: #1E2D7A; vertical-align: top; }
-.pipeline-table tr:hover td { background: #FAFAFA; }
-.status-pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
-.status-identified { background: #F2EFFE; color: #5B3FD0; }
-.status-warm { background: #E0FAF5; color: #007A5E; }
-.status-contacted { background: #FFF3E0; color: #BF6000; }
-.amount { font-size: 12px; color: #4A4A68; }
-
-/* PHASE HEADER */
-.phase-header { background: #F2EFFE; border-radius: 8px; padding: 10px 14px; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
-.phase-title { font-size: 13px; font-weight: 600; color: #5B3FD0; }
-.phase-dates { font-size: 12px; color: #8A8AA8; }
-
-/* EMPTY STATE */
-.empty { text-align: center; padding: 3rem 1rem; color: #8A8AA8; font-size: 14px; }
-
-/* SCROLL */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #E2E0F0; border-radius: 2px; }
+.notes-section{margin-top:2rem}
+.notes-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8A8AA8;margin-bottom:.5rem}
+.notes-box{width:100%;min-height:80px;border:1px solid #E2E0F0;border-radius:10px;padding:10px 13px;font-size:13px;font-family:inherit;color:#1E2D7A;background:#fff;resize:vertical;outline:none;transition:border-color .15s;line-height:1.6}
+.notes-box:focus{border-color:#5B3FD0}
+.notes-box::placeholder{color:#C4C2D8}
+.notes-saved{font-size:11px;color:#00A882;margin-top:4px;opacity:0;transition:opacity .3s}
+.notes-saved.show{opacity:1}
+.pipeline-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:2rem}
+.pipeline-table th{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#8A8AA8;padding:8px 10px;border-bottom:1px solid #E2E0F0}
+.pipeline-table td{padding:9px 10px;border-bottom:1px solid #F0EFF8;color:#1E2D7A;vertical-align:middle}
+.pipeline-table tr:hover td{background:#FAFAFA}
+.s-identified{background:#F2EFFE;color:#5B3FD0;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;display:inline-block}
+.s-warm{background:#E0FAF5;color:#007A5E;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;display:inline-block}
+.no-results{text-align:center;padding:3rem 1rem;color:#8A8AA8;font-size:14px;display:none}
+.no-results.show{display:block}
+.done-toggle{font-size:11px;color:#8A8AA8;background:none;border:none;cursor:pointer;padding:4px 0;font-family:inherit;display:flex;align-items:center;gap:4px;margin-top:4px}
+.done-toggle:hover{color:#5B3FD0}
+.focus-empty{text-align:center;padding:3rem 1rem;color:#8A8AA8;font-size:14px}
+.focus-section-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8A8AA8;margin-bottom:.5rem;padding-bottom:.4rem;border-bottom:1px solid #E2E0F0;margin-top:1.5rem}
+.focus-section-label:first-child{margin-top:0}
+.owner-multi{display:flex;gap:4px;flex-wrap:wrap}
+.owner-chip{display:inline-flex;align-items:center;gap:3px;background:#F2EFFE;color:#5B3FD0;border:1px solid #DDD4FC;border-radius:20px;font-size:11px;padding:2px 6px;font-weight:600;cursor:pointer}
+.owner-chip:hover{background:#EAE6FC}
+.owner-chip-add{background:#F0EFF8;color:#8A8AA8;border:1px dashed #C4C2D8}
+.owner-chip-add:hover{background:#F2EFFE;color:#5B3FD0;border-color:#BBA8F7}
+.owner-chip-remove{font-size:12px;color:#9178F2;line-height:1;margin-left:1px}
+.owner-chip-remove:hover{color:#A03030}
+.owner-dropdown{position:absolute;background:#fff;border:1px solid #E2E0F0;border-radius:10px;box-shadow:0 4px 16px rgba(30,45,122,.1);z-index:300;padding:6px;min-width:130px}
+.owner-dropdown-item{padding:6px 10px;font-size:12px;color:#1E2D7A;cursor:pointer;border-radius:6px}
+.owner-dropdown-item:hover{background:#F2EFFE;color:#5B3FD0}
+.owner-wrap{position:relative;display:inline-block}
+.panel{display:none}
+.panel.active{display:block}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:#E2E0F0;border-radius:2px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDLw64yc5Re9_2kt2JLqKjZ2ukEd7Cajl4",
+  authDomain: "voxspan-to-do-dashboard.firebaseapp.com",
+  projectId: "voxspan-to-do-dashboard",
+  storageBucket: "voxspan-to-do-dashboard.firebasestorage.app",
+  messagingSenderId: "630457670269",
+  appId: "1:630457670269:web:02f8da305a84c656e32f14"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const DOC = doc(db, 'dashboard', 'state');
+const NOTES_DOC = doc(db, 'dashboard', 'notes');
+
+let suppressListener = false;
+
+// ── SAVE TO FIREBASE ──────────────────────────────────────────────────────────
+window.saveToFirebase = async function() {
+  suppressListener = true;
+  const state = {};
+  document.querySelectorAll('.item[data-id]').forEach(item => {
+    const id = item.dataset.id;
+    const ps = item.querySelector('[data-role="prio"]');
+    state[id] = {
+      done: item.querySelector('.checkbox').classList.contains('done'),
+      prio: ps ? ps.value : null,
+      owners: window.ownerMap[id] || [],
+      comment: localStorage.getItem('vox-comment-' + id) || ''
+    };
+  });
+  // custom tasks
+  state['__custom__'] = JSON.stringify(window.customTasks || {});
+  state['__ownerMap__'] = JSON.stringify(window.ownerMap || {});
+  try {
+    await setDoc(DOC, state);
+  } catch(e) { console.warn('Firebase save error', e); }
+  setTimeout(() => suppressListener = false, 1000);
+};
+
+window.saveNotesToFirebase = async function(tab, val) {
+  try {
+    await setDoc(NOTES_DOC, { [tab]: val }, { merge: true });
+  } catch(e) { console.warn('Firebase notes error', e); }
+};
+
+// ── LISTEN FOR CHANGES ────────────────────────────────────────────────────────
+onSnapshot(DOC, (snap) => {
+  if (suppressListener) return;
+  if (!snap.exists()) return;
+  const state = snap.data();
+
+  // restore custom tasks if changed
+  if (state['__custom__']) {
+    try {
+      const ct = JSON.parse(state['__custom__']);
+      // only add tasks not already in DOM
+      Object.keys(ct).forEach(groupId => {
+        const container = document.getElementById('items-' + groupId);
+        if (!container) return;
+        const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
+        (ct[groupId] || []).forEach(item => {
+          if (!document.querySelector(`[data-id="${item.id}"]`)) {
+            container.insertAdjacentHTML('beforeend', window.makeItemHTML(item, tab));
+            if (!window.customTasks[groupId]) window.customTasks[groupId] = [];
+            window.customTasks[groupId].push(item);
+          }
+        });
+      });
+    } catch(e) {}
+  }
+
+  if (state['__ownerMap__']) {
+    try {
+      const om = JSON.parse(state['__ownerMap__']);
+      Object.keys(om).forEach(id => { window.ownerMap[id] = om[id]; });
+    } catch(e) {}
+  }
+
+  Object.keys(state).forEach(id => {
+    if (id.startsWith('__')) return;
+    const item = document.querySelector(`[data-id="${id}"]`);
+    if (!item) return;
+    const s = state[id];
+    const cb = item.querySelector('.checkbox');
+    const title = item.querySelector('.item-title');
+    if (s.done && !cb.classList.contains('done')) { cb.classList.add('done'); title.classList.add('done'); }
+    if (!s.done && cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
+    if (s.prio) {
+      const ps = item.querySelector('[data-role="prio"]');
+      if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
+      item.dataset.prio = s.prio;
+      const tag = document.getElementById('prio-tag-' + id);
+      if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = window.PRIO_LABELS[s.prio]; }
+    }
+    if (s.owners) {
+      window.ownerMap[id] = s.owners;
+      window.renderOwnerChips(id);
+    }
+    if (s.comment) {
+      const box = document.getElementById('comment-' + id);
+      const lbl = document.getElementById('comment-lbl-' + id);
+      if (box && box.value !== s.comment) {
+        box.value = s.comment;
+        localStorage.setItem('vox-comment-' + id, s.comment);
+        if (s.comment.trim()) {
+          box.style.display = 'block';
+          if (lbl) lbl.textContent = 'Hide note';
+          window.updateNoteDot(id, true);
+        }
+      }
+    }
+  });
+
+  window.updateAll();
+  window.refreshDoneGroups();
+  window.refreshFocusTab();
+});
+
+onSnapshot(NOTES_DOC, (snap) => {
+  if (!snap.exists()) return;
+  const notes = snap.data();
+  Object.keys(notes).forEach(tab => {
+    const key = (window.TASKS[tab] && window.TASKS[tab].noteId) || ('notes-' + tab);
+    const el = document.getElementById(key);
+    if (el && el.value !== notes[tab]) el.value = notes[tab];
+  });
+});
+
+// Show sync indicator
+window.showSyncDot = function(ok) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-lbl');
+  if (!dot || !lbl) return;
+  dot.style.background = ok ? '#00D4A8' : '#E05050';
+  lbl.textContent = ok ? 'Synced' : 'Offline';
+  setTimeout(() => { dot.style.background = '#C4C2D8'; lbl.textContent = 'Live'; }, 2000);
+};
+
+console.log('Firebase connected');
+window._firebaseReady = true;
+</script>
 </head>
 <body>
-
 <header>
   <div class="logo">VOXSPAN</div>
-  <div class="header-right">Launch Dashboard &nbsp;·&nbsp; March 2026</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#8A8AA8">
+      <span id="sync-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C4C2D8;transition:background .3s"></span>
+      <span id="sync-lbl">Live</span>
+    </div>
+    <div class="header-right">Launch Dashboard &nbsp;·&nbsp; March 2026</div>
+  </div>
 </header>
-
 <div class="overview">
   <div class="overview-top">
-    <div>
-      <div class="overall-label">Overall progress</div>
-      <div class="overall-pct" id="overall-pct">0%</div>
-    </div>
+    <div><div class="overall-label">Overall progress</div><div class="overall-pct" id="overall-pct">0%</div></div>
     <div class="mini-stats">
-      <div class="mini-stat"><div class="mini-stat-num" id="stat-done">0</div><div class="mini-stat-label">Done</div></div>
-      <div class="mini-stat"><div class="mini-stat-num" id="stat-left">0</div><div class="mini-stat-label">Left</div></div>
-      <div class="mini-stat"><div class="mini-stat-num" id="stat-total">0</div><div class="mini-stat-label">Total</div></div>
+      <div><div class="mini-stat-num" id="stat-done">0</div><div class="mini-stat-label">Done</div></div>
+      <div><div class="mini-stat-num" id="stat-left">0</div><div class="mini-stat-label">Left</div></div>
+      <div><div class="mini-stat-num" id="stat-total">0</div><div class="mini-stat-label">Total</div></div>
     </div>
   </div>
-  <div class="progress-bar"><div class="progress-fill" id="overall-fill" style="width:0%"></div></div>
+  <div class="prog-bar"><div class="prog-fill" id="overall-fill" style="width:0%"></div></div>
 </div>
-
+<div class="toolbar">
+  <input class="search-box" id="search-box" type="text" placeholder="Search tasks…" oninput="applyFilters()">
+  <span class="filter-label">Owner:</span>
+  <select class="filter-select" id="filter-owner" onchange="applyFilters()">
+    <option value="">Everyone</option>
+    <option>Baris</option><option>Didem U</option><option>Ivo</option><option>Patryk</option><option>Didem A</option>
+  </select>
+  <span class="filter-label">Priority:</span>
+  <select class="filter-select" id="filter-prio" onchange="applyFilters()">
+    <option value="">All</option>
+    <option value="critical">Critical</option>
+    <option value="now">Now</option>
+    <option value="week">This week</option>
+    <option value="later">Later</option>
+    <option value="done">Done</option>
+  </select>
+  <button class="clear-btn" onclick="clearFilters()">Clear</button>
+  <span class="search-count" id="search-count"></span>
+</div>
 <div class="tab-bar">
-  <div class="tab active" onclick="showTab('brand')">Brand <span class="tab-badge" id="badge-brand"></span></div>
-  <div class="tab" onclick="showTab('pitch')">Pitch Deck <span class="tab-badge" id="badge-pitch"></span></div>
-  <div class="tab" onclick="showTab('legal')">Legal <span class="tab-badge" id="badge-legal"></span></div>
-  <div class="tab" onclick="showTab('product')">Product <span class="tab-badge" id="badge-product"></span></div>
-  <div class="tab" onclick="showTab('gtm')">GTM <span class="tab-badge" id="badge-gtm"></span></div>
-  <div class="tab" onclick="showTab('fundraising')">Fundraising <span class="tab-badge" id="badge-fundraising"></span></div>
-  <div class="tab" onclick="showTab('team')">Team <span class="tab-badge" id="badge-team"></span></div>
-  <div class="tab" onclick="showTab('investors')">Investors</div>
-  <div class="tab" onclick="showTab('b2b')">B2B Pipeline</div>
-  <div class="tab" onclick="showTab('90days')">90-Day Plan <span class="tab-badge" id="badge-90days"></span></div>
+  <div class="tab active" onclick="showTab('brand',this)">Brand <span class="tab-badge" id="badge-brand"></span></div>
+  <div class="tab" onclick="showTab('pitch',this)">Pitch Deck <span class="tab-badge" id="badge-pitch"></span></div>
+  <div class="tab" onclick="showTab('legal',this)">Legal <span class="tab-badge" id="badge-legal"></span></div>
+  <div class="tab" onclick="showTab('product',this)">Product <span class="tab-badge" id="badge-product"></span></div>
+  <div class="tab" onclick="showTab('gtm',this)">GTM <span class="tab-badge" id="badge-gtm"></span></div>
+  <div class="tab" onclick="showTab('fundraising',this)">Fundraising <span class="tab-badge" id="badge-fundraising"></span></div>
+  <div class="tab" onclick="showTab('team',this)">Team <span class="tab-badge" id="badge-team"></span></div>
+  <div class="tab" onclick="showTab('investors',this)">Investors</div>
+  <div class="tab" onclick="showTab('b2b',this)">B2B Pipeline</div>
+  <div class="tab" onclick="showTab('90days',this)">90-Day Plan <span class="tab-badge" id="badge-90days"></span></div>
+  <div class="tab" onclick="showTab('focus',this)">⚡ Today's Focus <span class="tab-badge" id="badge-focus"></span></div>
 </div>
-
-<main>
-
-<!-- BRAND TAB -->
-<div class="panel active" id="panel-brand">
-  <div class="section-progress"><div class="section-bar"><div class="section-bar-fill" id="bar-brand"></div></div><div class="section-pct" id="pct-brand">0%</div></div>
-
-  <div class="group">
-    <div class="group-label">Foundation</div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Define brand voice pillars</div><div class="item-note">Curious · Confident · Responsible · Playful</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Write voice statement</div><div class="item-note">"Warm enough that consumers want to answer honestly. Sharp enough that businesses trust what they're buying."</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Lock colour system</div><div class="item-note">5 scales · 7 stops each · Purple anchor · Mint accent</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Set typography system</div><div class="item-note">Space Grotesk Bold/Light + DM Sans for PPTX</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Write brand voice document</div><div class="item-note">Voxspan_Brand_Voice_and_Colors.docx — exported</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Taglines & Messaging</div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Lock primary tagline</div><div class="item-note">"Where opinions become insight."</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Lock campaign taglines</div><div class="item-note">"Finally, someone asked." + 4 context taglines</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Build voice-in-action library</div><div class="item-note">Push · Result reveal · Streak · Empty state · Referral</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Extend voice-in-action library</div><div class="item-note">Onboarding screens · B2B landing page · Error states · Pro upsell</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Write B2B messaging framework</div><div class="item-note">Landing page copy · One-liner · Sales deck language</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Identity & Agency</div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Send agency briefing email</div><div class="item-note">3 attachments: Agency-Briefing.docx · Colour-System.pdf · both decks</div><div class="tags"><span class="tag tag-now">Now</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Receive agency brand identity guidelines</div><div class="item-note">3 deliverables: identity guidelines · pitch deck notes · positioning statement</div><div class="tags"><span class="tag tag-wip">In progress</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Logo design & finalise</div><div class="item-note">Gradient: #5B3FD0 → #00D4A8 · App icon 1024×1024px for stores</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Brand positioning statement</div><div class="item-note">"Consumer opinion platform, not a research tool"</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Brand guidelines PDF</div><div class="item-note">Full document for external partners and agency</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Social media brand templates</div><div class="item-note">Instagram · LinkedIn — on-brand visual language</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">App store listing copy</div><div class="item-note">Title · Subtitle · Description — all in brand voice</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="brand"><div class="checkbox"></div><div class="text-block"><div class="item-title">Update handover briefing doc</div><div class="item-note">Reflect all brand voice decisions made this session</div><div class="tags"><span class="tag tag-now">Now</span></div></div></div>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Notes — Brand</div>
-    <textarea class="notes-box" id="notes-brand" placeholder="Add notes, links, or reminders here…" oninput="saveNote('brand')"></textarea>
-    <div class="notes-saved" id="saved-brand">Saved</div>
-  </div>
-</div>
-
-<!-- PITCH DECK TAB -->
-<div class="panel" id="panel-pitch">
-  <div class="section-progress"><div class="section-bar"><div class="section-bar-fill" id="bar-pitch"></div></div><div class="section-pct" id="pct-pitch">0%</div></div>
-
-  <div class="group">
-    <div class="group-label">Urgent fixes</div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Fix broken copy on stats slide (54% adults rallies)</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Fix Custom Questions price inconsistency (€450 vs €999)</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Add product stage clarity to deck</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Update competitive slide — add shows results to users row</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Fix "Woxspan" typo on market opportunity slide</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Fix remaining typos (indistury · mising · Convertable)</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox done"></div><div class="text-block"><div class="item-title done">Rebuild GTM slide with 6–9 month honest timeline</div><div class="tags"><span class="tag tag-done">Done</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Finish pitch deck — fix remaining typos and slides</div><div class="tags"><span class="tag tag-wip">In progress</span><span class="tag tag-now">Now</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Slide updates</div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Update slide 4 — solution text</div><div class="item-note">Answer the 3 problem boxes directly</div><div class="tags"><span class="tag tag-now">Now</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Update slide 12 — Free/Pro model</div><div class="item-note">Free: full results + 1x points · Pro: €2.99/mo or points unlock</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Consider removing slide 10 from long deck</div><div class="item-note">"Who we serve" — covered elsewhere in deck</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">PPTX imports into Canva</div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Import slide-competitive.pptx into both decks</div><div class="item-note">Category labels + callout · Scores: 2/10 · 4/10 · 10/10</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Import all remaining rebuilt PPTX slides into Canva</div><div class="item-note">slide-solution · slide-ask · slide-key-features · slide-roadmap</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Upload app screen record video to Canva pitch deck</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Agency pitch deck brand review</div><div class="item-note">Written notes only — agency deliverable</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Video</div>
-    <div class="item" onclick="toggle(this)" data-tab="pitch"><div class="checkbox"></div><div class="text-block"><div class="item-title">Screen record app for pitch deck video</div><div class="item-note">Chrome DevTools · iPhone 13</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Notes — Pitch Deck</div>
-    <textarea class="notes-box" id="notes-pitch" placeholder="Canva design IDs: Long (19 slides): DAHEGOFcVv0 · Short (13 slides): DAHFIruw2Xo" oninput="saveNote('pitch')"></textarea>
-    <div class="notes-saved" id="saved-pitch">Saved</div>
-  </div>
-</div>
-
-<!-- LEGAL TAB -->
-<div class="panel" id="panel-legal">
-  <div class="section-progress"><div class="section-bar"><div class="section-bar-fill" id="bar-legal"></div></div><div class="section-pct" id="pct-legal">0%</div></div>
-
-  <div class="group">
-    <div class="group-label">Company setup</div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Register Voxspan BV via Firm24</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">KVK registration</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Draft shareholder agreement via Ligo</div><div class="tags"><span class="tag tag-now">Now</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Open Bunq Business bank account</div><div class="item-note">Needed for Stripe, Apple, Google payments</div><div class="tags"><span class="tag tag-week">This week</span><span class="tag tag-critical">Critical</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Equity & agreements</div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Agree equity split with Didem and Ivo</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Have equity conversation with Didem</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Have equity conversation with Ivo</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">NDA template for contractors</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Create NDA for B2B</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Check ING employment contract for nevenwerkzaamheden clause</div><div class="tags"><span class="tag tag-now">Now</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Trademark & domain</div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">File EUIPO trademark Class 42 + 38</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Buy voxspan.io</div><div class="item-note">Cheap. Credible fallback. Do it now.</div><div class="tags"><span class="tag tag-now">Today</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Submit GoDaddy broker request for voxspan.com</div><div class="item-note">Ceiling €1,500 · Do NOT call the proxy phone number</div><div class="tags"><span class="tag tag-now">Now</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Register voxspan.app domain</div><div class="item-note">Note: do not mention voxspan.app publicly until domain secured</div><div class="tags"><span class="tag tag-now">Now</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Compliance</div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Draft Terms & Conditions</div><div class="item-note">Must cover data collection · GDPR · B2B use</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">Draft Privacy Policy</div><div class="item-note">GDPR-compliant · covers survey data · required for app store</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="legal"><div class="checkbox"></div><div class="text-block"><div class="item-title">GDPR compliance review</div><div class="item-note">Especially for EU users & demographic data</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Notes — Legal</div>
-    <textarea class="notes-box" id="notes-legal" placeholder="Add notes…" oninput="saveNote('legal')"></textarea>
-    <div class="notes-saved" id="saved-legal">Saved</div>
-  </div>
-</div>
-
-<!-- PRODUCT TAB -->
-<div class="panel" id="panel-product">
-  <div class="section-progress"><div class="section-bar"><div class="section-bar-fill" id="bar-product"></div></div><div class="section-pct" id="pct-product">0%</div></div>
-
-  <div class="group">
-    <div class="group-label">Launch — critical path</div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">App store submission — iOS</div><div class="item-note">Need Apple Developer account ($99/yr) · Allow 2–7 days review</div><div class="tags"><span class="tag tag-week">This week</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">App store submission — Android</div><div class="item-note">Need Google Play account ($25) · Usually 1–3 days review</div><div class="tags"><span class="tag tag-week">This week</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Privacy policy page</div><div class="item-note">Required for app store submission</div><div class="tags"><span class="tag tag-now">Now</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Terms of service page</div><div class="item-note">Required for app store submission</div><div class="tags"><span class="tag tag-now">Now</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Onboarding flow</div><div class="item-note">Age · gender · location · income — profile data capture</div><div class="tags"><span class="tag tag-now">Now</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Fix remaining React warnings (unused imports)</div><div class="item-note">Non-critical but clean up before submission</div><div class="tags"><span class="tag tag-now">Now</span><span class="tag tag-dev">Dev</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Core product features</div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Points system design</div><div class="item-note">Define: how many points per action · Free 1x · Pro 2x</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Streak mechanic</div><div class="item-note">Visual streak counter · points · real server-side dates</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Share mechanic — result card</div><div class="item-note">After reveal: shareable image · one-tap share to Instagram stories</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Majority/Minority reveal animation</div><div class="item-note">The moment needs to feel dramatic</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Push notifications setup (FCM/APNs)</div><div class="item-note">Daily question reminder · streak alerts · core retention mechanic</div><div class="tags"><span class="tag tag-later">Later</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">B2B dashboard — basic</div><div class="item-note">Marketer tier: country/age/gender breakdowns</div><div class="tags"><span class="tag tag-later">Later</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">API v1</div><div class="item-note">Professional tier: programmatic access</div><div class="tags"><span class="tag tag-later">Later</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="product"><div class="checkbox"></div><div class="text-block"><div class="item-title">Extended survey flow</div><div class="item-note">Opt-in longer surveys · bonus points</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Notes — Product</div>
-    <textarea class="notes-box" id="notes-product" placeholder="Add notes…" oninput="saveNote('product')"></textarea>
-    <div class="notes-saved" id="saved-product">Saved</div>
-  </div>
-</div>
-
-<!-- GTM TAB -->
-<div class="panel" id="panel-gtm">
-  <div class="section-progress"><div class="section-bar"><div class="section-bar-fill" id="bar-gtm"></div></div><div class="section-pct" id="pct-gtm">0%</div></div>
-
-  <div class="group">
-    <div class="group-label">Beta & waitlist</div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Set up beta user waitlist</div><div class="item-note">Simple page — email capture</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Identify 10 micro-influencers for seeding</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Identify 100 beta users</div><div class="item-note">Personal network · Reddit · Product Hunt</div><div class="tags"><span class="tag tag-week">This week</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Create beta onboarding email</div><div class="item-note">Welcome · explain the mission · ask for feedback</div><div class="tags"><span class="tag tag-week">This week</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Set up feedback channel</div><div class="item-note">Typeform survey or Discord server</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Content & social</div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Post on ProductHunt upcoming</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">List target Reddit communities</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Create content calendar (3 months)</div><div class="item-note">Plan topics · formats · publishing dates</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Design social post templates (Canva)</div><div class="item-note">Consistent visual style · 30 min setup</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Write first 10 posts in advance</div><div class="item-note">Never scramble for content at launch</div><div class="tags"><span class="tag tag-high">High</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Set up scheduling tool</div><div class="item-note">Buffer or Later — free tiers cover early stage</div><div class="tags"><span class="tag tag-high">High</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="gtm"><div class="checkbox"></div><div class="text-block"><div class="item-title">Set up weekly email template</div><div class="item-note">Weekly digest — core retention tool</div><div class="tags"><span class="tag tag-high">High</span></div></div></div>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Notes — GTM</div>
-    <textarea class="notes-box" id="notes-gtm" placeholder="Add notes…" oninput="saveNote('gtm')"></textarea>
-    <div class="notes-saved" id="saved-gtm">Saved</div>
-  </div>
-</div>
-
-<!-- FUNDRAISING TAB -->
-<div class="panel" id="panel-fundraising">
-  <div class="section-progress"><div class="section-bar"><div class="section-bar-fill" id="bar-fundraising"></div></div><div class="section-pct" id="pct-fundraising">0%</div></div>
-
-  <div class="group">
-    <div class="group-label">Pre-seed round — €100K at €800K pre-money</div>
-    <div class="item" onclick="toggle(this)" data-tab="fundraising"><div class="checkbox"></div><div class="text-block"><div class="item-title">Send pitch deck to friend investor</div><div class="item-note">Personal network · €10K–20K potential</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="fundraising"><div class="checkbox"></div><div class="text-block"><div class="item-title">Send pitch deck to agency owner investor</div><div class="item-note">Strategic Angel · €20K–40K potential · include strategic note</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="fundraising"><div class="checkbox"></div><div class="text-block"><div class="item-title">Apply to Antler Amsterdam</div><div class="item-note">Accelerator · €20K–50K potential</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="fundraising"><div class="checkbox"></div><div class="text-block"><div class="item-title">Apply to Rockstart</div><div class="item-note">Accelerator · €20K–100K potential</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="fundraising"><div class="checkbox"></div><div class="text-block"><div class="item-title">Check Startupbootcamp Amsterdam eligibility</div><div class="item-note">Accelerator · €20K–50K potential</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="fundraising"><div class="checkbox"></div><div class="text-block"><div class="item-title">Check YES!Delft eligibility</div><div class="item-note">Accelerator · €20K–50K potential</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Notes — Fundraising</div>
-    <textarea class="notes-box" id="notes-fundraising" placeholder="Raising €100K · Pre-money €800K · Launch cost ~€2,200–2,500…" oninput="saveNote('fundraising')"></textarea>
-    <div class="notes-saved" id="saved-fundraising">Saved</div>
-  </div>
-</div>
-
-<!-- TEAM TAB -->
-<div class="panel" id="panel-team">
-  <div class="section-progress"><div class="section-bar"><div class="section-bar-fill" id="bar-team"></div></div><div class="section-pct" id="pct-team">0%</div></div>
-
-  <div class="group">
-    <div class="group-label">Activate team</div>
-    <div class="item" onclick="toggle(this)" data-tab="team"><div class="checkbox"></div><div class="text-block"><div class="item-title">Confirm Didem Ansel is happy being in the deck</div><div class="item-note">Then send her onboarding email — Research Consultant · ~5hrs/week</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="team"><div class="checkbox"></div><div class="text-block"><div class="item-title">Send Didem Usluer activation email</div><div class="item-note">CMO · ~5hrs/week async · First task: pitch deck review from marketing POV</div><div class="tags"><span class="tag tag-week">This week</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="team"><div class="checkbox"></div><div class="text-block"><div class="item-title">Formalise equity agreements</div><div class="item-note">All except Baris · Once BV legal structure registered · Agreed in principle</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="team"><div class="checkbox"></div><div class="text-block"><div class="item-title">Find CTO / tech lead</div><div class="item-note">Confirm Patryk Jachimowski spelling on team slide</div><div class="tags"><span class="tag tag-later">Later</span></div></div></div>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Team notes</div>
-    <textarea class="notes-box" id="notes-team" placeholder="Baris Imren — CEO · Didem Usluer — CMO · Ivo Vassilev — CFO · Patryk Jachimowski — CTO · Didem Ansel — Research Consultant" oninput="saveNote('team')"></textarea>
-    <div class="notes-saved" id="saved-team">Saved</div>
-  </div>
-</div>
-
-<!-- INVESTORS TAB -->
-<div class="panel" id="panel-investors">
-  <div class="group">
-    <div class="group-label">Investor pipeline</div>
-    <table class="pipeline-table">
-      <thead><tr><th>Name</th><th>Type</th><th>Potential (€)</th><th>Status</th><th>Next step</th></tr></thead>
-      <tbody>
-        <tr><td>Friend (personal network)</td><td>Friends & Family</td><td class="amount">10K–20K</td><td><span class="status-pill status-identified">Identified</span></td><td>Send pitch deck</td></tr>
-        <tr><td>Agency owner (ex-colleague)</td><td>Strategic Angel</td><td class="amount">20K–40K</td><td><span class="status-pill status-identified">Identified</span></td><td>Send pitch deck + strategic note</td></tr>
-        <tr><td>Antler Amsterdam</td><td>Accelerator</td><td class="amount">20K–50K</td><td><span class="status-pill status-identified">Identified</span></td><td>Submit application</td></tr>
-        <tr><td>Rockstart</td><td>Accelerator</td><td class="amount">20K–100K</td><td><span class="status-pill status-identified">Identified</span></td><td>Submit application</td></tr>
-        <tr><td>Startupbootcamp Amsterdam</td><td>Accelerator</td><td class="amount">20K–50K</td><td><span class="status-pill status-identified">Identified</span></td><td>Submit application</td></tr>
-        <tr><td>YES!Delft</td><td>Accelerator</td><td class="amount">20K–50K</td><td><span class="status-pill status-identified">Identified</span></td><td>Check eligibility</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Investor notes</div>
-    <textarea class="notes-box" id="notes-investors" placeholder="Add investor notes, contact details, follow-up dates…" oninput="saveNote('investors')"></textarea>
-    <div class="notes-saved" id="saved-investors">Saved</div>
-  </div>
-</div>
-
-<!-- B2B TAB -->
-<div class="panel" id="panel-b2b">
-  <div class="group">
-    <div class="group-label">B2B pipeline</div>
-    <table class="pipeline-table">
-      <thead><tr><th>Company</th><th>Contact</th><th>Tier</th><th>Status</th><th>Next step</th></tr></thead>
-      <tbody>
-        <tr><td>Agency owner's company</td><td>Agency owner (personal)</td><td>Professional / Enterprise</td><td><span class="status-pill status-warm">Warm lead</span></td><td>Pitch deck meeting</td></tr>
-        <tr><td>TBD — media company</td><td>Unknown</td><td>Enterprise</td><td><span class="status-pill status-identified">Identified</span></td><td>Research targets</td></tr>
-        <tr><td>TBD — market research firm</td><td>Unknown</td><td>Professional</td><td><span class="status-pill status-identified">Identified</span></td><td>Research targets</td></tr>
-        <tr><td>TBD — brand client via Didem</td><td>Unknown</td><td>Marketer / Professional</td><td><span class="status-pill status-identified">Identified</span></td><td>Ask Didem for introductions</td></tr>
-        <tr><td>TBD — brand client via Ivo</td><td>Unknown</td><td>Professional</td><td><span class="status-pill status-identified">Identified</span></td><td>Ask Ivo for introductions</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">B2B notes</div>
-    <textarea class="notes-box" id="notes-b2b" placeholder="Add B2B notes, meeting dates, proposals…" oninput="saveNote('b2b')"></textarea>
-    <div class="notes-saved" id="saved-b2b">Saved</div>
-  </div>
-</div>
-
-<!-- 90 DAY PLAN TAB -->
-<div class="panel" id="panel-90days">
-  <div class="section-progress"><div class="section-bar"><div class="section-bar-fill" id="bar-90days"></div></div><div class="section-pct" id="pct-90days">0%</div></div>
-
-  <div class="phase-header"><div class="phase-title">Phase 1 — Foundation & Legal</div><div class="phase-dates">Weeks 1–2 · March 8–21</div></div>
-
-  <div class="group">
-    <div class="group-label">Infrastructure</div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Choose cloud provider</div><div class="item-note">AWS / GCP / Render — budget-friendly options</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Set up real database</div><div class="item-note">PostgreSQL or Supabase recommended</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Configure dev/staging/prod environments</div><div class="item-note">Never test on production</div><div class="tags"><span class="tag tag-high">High</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Set up email service</div><div class="item-note">Resend or SendGrid for transactional email</div><div class="tags"><span class="tag tag-high">High</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Register Apple Developer account</div><div class="item-note">$99/year · Takes up to 2 days to approve</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-founder">Founder</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Register Google Play account</div><div class="item-note">$25 one-time · Faster approval</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-founder">Founder</span></div></div></div>
-  </div>
-
-  <div class="phase-header" style="margin-top:1.5rem"><div class="phase-title">Phase 2 — Product Hardening</div><div class="phase-dates">Weeks 3–5 · March 22 – April 11</div></div>
-
-  <div class="group">
-    <div class="group-label">Backend</div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Build REST API / backend</div><div class="item-note">Node.js + Express or Supabase edge functions</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Real user auth (JWT)</div><div class="item-note">Replace in-memory _store</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Real answer aggregation</div><div class="item-note">Core of the B2B value — must work perfectly</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Streak tracking with real dates</div><div class="item-note">Currently hardcoded — fix with server-side dates</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Stripe payment integration</div><div class="item-note">For Pro subscriptions (€2.99/mo)</div><div class="tags"><span class="tag tag-high">High</span><span class="tag tag-dev">Dev</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Admin panel</div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Build question CMS</div><div class="item-note">Create/edit/schedule daily questions without code</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Results dashboard (internal)</div><div class="item-note">Live aggregated results per question</div><div class="tags"><span class="tag tag-high">High</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Data export (CSV)</div><div class="item-note">For early B2B clients before API is built</div><div class="tags"><span class="tag tag-high">High</span><span class="tag tag-dev">Dev</span></div></div></div>
-  </div>
-
-  <div class="group">
-    <div class="group-label">Mobile app prep</div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Convert React to React Native or wrap in Capacitor</div><div class="item-note">Required for native app store submission</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">iOS build & TestFlight setup</div><div class="item-note">Internal testing before submission</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">App store screenshots (all sizes)</div><div class="item-note">Required for submission — 6–8 screenshots</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-founder">Founder</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Privacy manifest (Apple requirement)</div><div class="item-note">Apple now requires this — easy to miss</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-  </div>
-
-  <div class="phase-header" style="margin-top:1.5rem"><div class="phase-title">Phase 3 — Go-to-Market</div><div class="phase-dates">Weeks 6–9 · April 12 – May 9</div></div>
-
-  <div class="group">
-    <div class="group-label">Website & landing page</div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Beta waitlist landing page</div><div class="item-note">Simple page — email capture · First 50 signups target</div><div class="tags"><span class="tag tag-now">Now</span><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Launch full website</div><div class="item-note">Framer or Webflow — B2C + B2B sections</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-founder">Founder</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">B2B landing page / data page</div><div class="item-note">Where B2B prospects land after outreach</div><div class="tags"><span class="tag tag-high">High</span><span class="tag tag-founder">Founder</span></div></div></div>
-  </div>
-
-  <div class="phase-header" style="margin-top:1.5rem"><div class="phase-title">Phase 4 — Launch & Growth</div><div class="phase-dates">Weeks 10–13 · May 10 – June 7</div></div>
-
-  <div class="group">
-    <div class="group-label">App store launch</div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Submit to Apple App Store</div><div class="item-note">Allow 2–7 days for review</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Submit to Google Play Store</div><div class="item-note">Usually 1–3 days for review</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Submit to Product Hunt</div><div class="item-note">Coordinate with supporters to upvote</div><div class="tags"><span class="tag tag-high">High</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Run €300 test ad budget across 4 creatives</div><div class="item-note">Test result reveals vs curiosity hooks · Find winner before scaling</div><div class="tags"><span class="tag tag-critical">Critical</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Launch referral mechanic</div><div class="item-note">Invite friend = streak shield for both</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-dev">Dev</span></div></div></div>
-    <div class="item" onclick="toggle(this)" data-tab="90days"><div class="checkbox"></div><div class="text-block"><div class="item-title">Build list of 50 target B2B prospects</div><div class="item-note">Market research agencies · PR firms · brands</div><div class="tags"><span class="tag tag-critical">Critical</span><span class="tag tag-founder">Founder</span></div></div></div>
-  </div>
-
-  <div class="notes-section">
-    <div class="notes-label">Notes — 90-Day Plan</div>
-    <textarea class="notes-box" id="notes-90days" placeholder="Target: 1,000 users by Week 13 · First B2B deal by end of Month 3…" oninput="saveNote('90days')"></textarea>
-    <div class="notes-saved" id="saved-90days">Saved</div>
-  </div>
-</div>
-
+<main id="main-content">
+  <div class="no-results" id="no-results">No tasks match your filters.</div>
 </main>
 
 <script>
-const TABS_WITH_TASKS = ['brand','pitch','legal','product','gtm','fundraising','team','90days'];
+const OWNERS=['Baris','Didem U','Ivo','Patryk','Didem A'];
+const PRIOS=[{v:'now',l:'Now'},{v:'week',l:'This week'},{v:'later',l:'Later'},{v:'critical',l:'Critical'},{v:'done',l:'Done'}];
+const PRIO_LABELS={now:'Now',week:'This week',later:'Later',critical:'Critical',done:'Done'};
+const TASK_TABS=['brand','pitch','legal','product','gtm','fundraising','team','90days'];
 
-function showTab(id) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('panel-' + id).classList.add('active');
-  event.currentTarget.classList.add('active');
+const TASKS={
+  brand:{groups:[
+    {id:'brand-g0',label:'Foundation',items:[
+      {id:'b1',title:'Define brand voice pillars',note:'Curious · Confident · Responsible · Playful',done:true,prio:'done',owner:'Baris'},
+      {id:'b2',title:'Write voice statement',note:'"Warm enough that consumers want to answer honestly…"',done:true,prio:'done',owner:'Baris'},
+      {id:'b3',title:'Lock colour system',note:'5 scales · 7 stops each · Purple anchor · Mint accent',done:true,prio:'done',owner:'Baris'},
+      {id:'b4',title:'Set typography system',note:'Space Grotesk Bold/Light + DM Sans for PPTX',done:true,prio:'done',owner:'Baris'},
+      {id:'b5',title:'Write brand voice document',note:'Voxspan_Brand_Voice_and_Colors.docx — exported',done:true,prio:'done',owner:'Baris'},
+    ]},
+    {id:'brand-g1',label:'Taglines & Messaging',items:[
+      {id:'b6',title:'Lock primary tagline',note:'"Where opinions become insight."',done:true,prio:'done',owner:'Baris'},
+      {id:'b7',title:'Lock campaign taglines',note:'"Finally, someone asked." + 4 context taglines',done:true,prio:'done',owner:'Baris'},
+      {id:'b8',title:'Build voice-in-action library',note:'Push · Result reveal · Streak · Empty state · Referral',done:true,prio:'done',owner:'Baris'},
+      {id:'b9',title:'Extend voice-in-action library',note:'Onboarding · B2B landing page · Error states · Pro upsell',prio:'week',owner:'Didem U'},
+      {id:'b10',title:'Write B2B messaging framework',note:'Landing page copy · One-liner · Sales deck language',prio:'later',owner:''},
+    ]},
+    {id:'brand-g2',label:'Identity & Agency',items:[
+      {id:'b11',title:'Send agency briefing email',note:'3 attachments: Agency-Briefing.docx · Colour-System.pdf · both decks',prio:'now',owner:'Baris'},
+      {id:'b12',title:'Receive agency brand identity guidelines',note:'3 deliverables: identity · pitch deck notes · positioning',prio:'week',owner:'',wip:true},
+      {id:'b13',title:'Logo design & finalise',note:'Gradient: #5B3FD0 → #00D4A8 · App icon 1024×1024px',prio:'critical',owner:''},
+      {id:'b14',title:'Brand guidelines PDF',note:'Full document for external partners',prio:'later',owner:''},
+      {id:'b15',title:'Update handover briefing doc',note:'Reflect all brand voice decisions from this session',prio:'now',owner:'Baris'},
+    ]},
+  ],noteId:'notes-brand',notePlaceholder:'Add notes…'},
+
+  pitch:{groups:[
+    {id:'pitch-g0',label:'Completed',items:[
+      {id:'p1',title:'Fix broken copy on stats slide (54% adults rallies)',done:true,prio:'done',owner:'Baris'},
+      {id:'p2',title:'Fix Custom Questions price inconsistency (€450 vs €999)',done:true,prio:'done',owner:'Baris'},
+      {id:'p3',title:'Fix "Woxspan" typo on market opportunity slide',done:true,prio:'done',owner:'Baris'},
+      {id:'p4',title:'Rebuild GTM slide with 6–9 month honest timeline',done:true,prio:'done',owner:'Baris'},
+    ]},
+    {id:'pitch-g1',label:'Outstanding',items:[
+      {id:'p5',title:'Finish pitch deck — remaining typos and slides',prio:'now',owner:'Baris',wip:true},
+      {id:'p6',title:'Update slide 4 — solution text',note:'Answer the 3 problem boxes directly',prio:'critical',owner:'Baris'},
+      {id:'p7',title:'Update slide 12 — Free/Pro model',note:'Free: full results + 1x · Pro: €2.99/mo or points unlock',prio:'week',owner:'Baris'},
+      {id:'p8',title:'Import all rebuilt PPTX slides into Canva',note:'slide-solution · slide-competitive · slide-ask · slide-key-features · slide-roadmap',prio:'week',owner:'Baris'},
+      {id:'p9',title:'Screen record app and upload video to Canva deck',note:'Chrome DevTools · iPhone 13',prio:'week',owner:'Baris'},
+      {id:'p10',title:'Consider removing slide 10 from long deck',note:'"Who we serve" — covered elsewhere',prio:'later',owner:'Baris'},
+      {id:'p11',title:'Didem U — pitch deck marketing review',note:'First task after activation email sent',prio:'week',owner:'Didem U'},
+    ]},
+  ],noteId:'notes-pitch',notePlaceholder:'Canva IDs: Long: DAHEGOFcVv0 · Short: DAHFIruw2Xo'},
+
+  legal:{groups:[
+    {id:'legal-g0',label:'Company setup',items:[
+      {id:'l1',title:'Register Voxspan BV via Firm24',prio:'later',owner:'Baris'},
+      {id:'l2',title:'KVK registration',prio:'later',owner:'Baris'},
+      {id:'l3',title:'Draft shareholder agreement via Ligo',prio:'now',owner:'Baris'},
+      {id:'l4',title:'Open Bunq Business bank account',note:'Needed for Stripe · Apple · Google payments',prio:'critical',owner:'Baris'},
+    ]},
+    {id:'legal-g1',label:'Equity & agreements',items:[
+      {id:'l5',title:'Agree equity split with Didem U and Ivo',prio:'week',owner:'Baris'},
+      {id:'l6',title:'Have equity conversation with Didem U',prio:'week',owner:'Baris'},
+      {id:'l7',title:'Have equity conversation with Ivo',prio:'week',owner:'Baris'},
+      {id:'l8',title:'Check ING employment contract for nevenwerkzaamheden clause',prio:'now',owner:'Baris'},
+    ]},
+    {id:'legal-g2',label:'Trademark, domain & compliance',items:[
+      {id:'l9',title:'Buy voxspan.io today',note:'Cheap · Credible fallback · Do it now',prio:'critical',owner:'Baris'},
+      {id:'l10',title:'Submit GoDaddy broker request for voxspan.com',note:'Ceiling €1,500 · Do NOT call the proxy phone number',prio:'now',owner:'Baris'},
+      {id:'l11',title:'File EUIPO trademark Class 42 + 38',prio:'week',owner:'Baris'},
+      {id:'l12',title:'Draft Terms & Conditions',note:'Must cover data collection · GDPR · B2B use',prio:'critical',owner:'Baris'},
+      {id:'l13',title:'Draft Privacy Policy',note:'GDPR-compliant · covers survey data · required for app store',prio:'critical',owner:'Baris'},
+    ]},
+  ],noteId:'notes-legal',notePlaceholder:'Add notes…'},
+
+  product:{groups:[
+    {id:'product-g0',label:'Launch blockers',items:[
+      {id:'pr1',title:'App store submission — iOS',note:'Apple Developer account $99/yr · Allow 2–7 days review',prio:'critical',owner:'Patryk'},
+      {id:'pr2',title:'App store submission — Android',note:'Google Play account $25 · Usually 1–3 days review',prio:'critical',owner:'Patryk'},
+      {id:'pr3',title:'Privacy policy page',note:'Required for app store submission',prio:'critical',owner:'Patryk'},
+      {id:'pr4',title:'Onboarding flow',note:'Age · gender · location · income — profile data capture',prio:'now',owner:'Patryk'},
+      {id:'pr5',title:'Fix remaining React warnings',note:'Unused imports — clean up before store submission',prio:'now',owner:'Patryk'},
+    ]},
+    {id:'product-g1',label:'Core features',items:[
+      {id:'pr6',title:'Points system design',note:'Free 1x · Pro 2x · Bonus on Q6 for Pro',prio:'week',owner:'Baris'},
+      {id:'pr7',title:'Streak mechanic',note:'Visual counter · real server-side dates',prio:'week',owner:'Patryk'},
+      {id:'pr8',title:'Share mechanic — result card',note:'One-tap share to Instagram stories after reveal',prio:'week',owner:'Patryk'},
+      {id:'pr9',title:'B2B dashboard — basic',note:'Country · age · gender breakdowns for Marketer tier',prio:'later',owner:'Patryk'},
+      {id:'pr10',title:'Push notifications (FCM/APNs)',note:'Daily question reminder · streak alerts',prio:'later',owner:'Patryk'},
+    ]},
+  ],noteId:'notes-product',notePlaceholder:'Add notes…'},
+
+  gtm:{groups:[
+    {id:'gtm-g0',label:'Beta & waitlist',items:[
+      {id:'g1',title:'Set up beta user waitlist',note:'Simple landing page — email capture',prio:'week',owner:'Baris'},
+      {id:'g2',title:'Identify 100 beta users',note:'Personal network · Reddit · Product Hunt',prio:'week',owner:'Baris'},
+      {id:'g3',title:'Identify 10 micro-influencers for seeding',prio:'week',owner:'Didem U'},
+      {id:'g4',title:'List target Reddit communities',prio:'week',owner:'Baris'},
+    ]},
+    {id:'gtm-g1',label:'Content & social',items:[
+      {id:'g5',title:'Create content calendar — 3 months',note:'Plan topics · formats · publishing dates',prio:'critical',owner:'Didem U'},
+      {id:'g6',title:'Design social post templates (Canva)',note:'Consistent visual style',prio:'critical',owner:'Baris'},
+      {id:'g7',title:'Write first 10 posts in advance',note:'Never scramble for content at launch',prio:'week',owner:'Didem U'},
+      {id:'g8',title:'Post on ProductHunt upcoming',prio:'later',owner:'Baris'},
+    ]},
+  ],noteId:'notes-gtm',notePlaceholder:'Add notes…'},
+
+  fundraising:{groups:[
+    {id:'fundraising-g0',label:'Pre-seed — €100K target at €800K pre-money',items:[
+      {id:'f1',title:'Send pitch deck to friend investor',note:'Personal network · €10K–20K potential',prio:'week',owner:'Baris'},
+      {id:'f2',title:'Send pitch deck to agency owner investor',note:'Strategic Angel · €20K–40K · include strategic note',prio:'week',owner:'Baris'},
+      {id:'f3',title:'Apply to Antler Amsterdam',note:'Accelerator · €20K–50K potential',prio:'week',owner:'Baris'},
+      {id:'f4',title:'Apply to Rockstart',note:'Accelerator · €20K–100K potential',prio:'week',owner:'Baris'},
+      {id:'f5',title:'Check Startupbootcamp Amsterdam & YES!Delft eligibility',note:'€20K–50K each',prio:'later',owner:'Ivo'},
+    ]},
+  ],noteId:'notes-fundraising',notePlaceholder:'Raising €100K · Pre-money €800K · Launch cost ~€2,200–2,500'},
+
+  team:{groups:[
+    {id:'team-g0',label:'Activate team',items:[
+      {id:'t1',title:'Confirm Didem Ansel is happy being in the deck',note:'Then send her onboarding email · ~5hrs/week',prio:'week',owner:'Baris'},
+      {id:'t2',title:'Send Didem Usluer activation email',note:'CMO · ~5hrs/week async · First task: pitch deck marketing review',prio:'week',owner:'Baris'},
+      {id:'t3',title:'Formalise equity agreements',note:'All except Baris · Once BV structure registered',prio:'later',owner:'Baris'},
+      {id:'t4',title:'Find CTO / tech lead',note:'Confirm Patryk Jachimowski spelling on team slide',prio:'later',owner:'Baris'},
+    ]},
+  ],noteId:'notes-team',notePlaceholder:'Baris — CEO · Didem U — CMO · Ivo — CFO · Patryk — CTO · Didem A — Research Consultant'},
+
+  '90days':{groups:[
+    {id:'90days-g0',label:'Phase 1 — Foundation (Weeks 1–2 · March 8–21)',phase:true,items:[
+      {id:'d1',title:'Choose cloud provider',note:'AWS / GCP / Render',prio:'critical',owner:'Patryk'},
+      {id:'d2',title:'Set up real database',note:'PostgreSQL or Supabase recommended',prio:'critical',owner:'Patryk'},
+      {id:'d3',title:'Register Apple Developer account',note:'$99/year · Allow up to 2 days',prio:'critical',owner:'Baris'},
+      {id:'d4',title:'Register Google Play account',note:'$25 one-time',prio:'critical',owner:'Baris'},
+    ]},
+    {id:'90days-g1',label:'Phase 2 — Product Hardening (Weeks 3–5 · March 22 – April 11)',phase:true,items:[
+      {id:'d5',title:'Build REST API / backend',note:'Node.js + Express or Supabase edge functions',prio:'critical',owner:'Patryk'},
+      {id:'d6',title:'Real user auth (JWT)',note:'Replace in-memory _store',prio:'critical',owner:'Patryk'},
+      {id:'d7',title:'Real answer aggregation',note:'Core of the B2B value — must work perfectly',prio:'critical',owner:'Patryk'},
+      {id:'d8',title:'Build question CMS (admin panel)',note:'Create/edit/schedule daily questions without code',prio:'critical',owner:'Patryk'},
+      {id:'d9',title:'Convert React to React Native or Capacitor',note:'Required for native app store submission',prio:'critical',owner:'Patryk'},
+      {id:'d10',title:'Privacy manifest (Apple requirement)',note:'Easy to miss — do not skip',prio:'critical',owner:'Patryk'},
+    ]},
+    {id:'90days-g2',label:'Phase 3 — Go-to-Market (Weeks 6–9 · April 12 – May 9)',phase:true,items:[
+      {id:'d11',title:'Beta waitlist landing page live',note:'Target: first 50 email signups',prio:'critical',owner:'Baris'},
+      {id:'d12',title:'Run beta for minimum 2 weeks',note:'Collect real data · Fix top 3 issues before public launch',prio:'critical',owner:'Baris'},
+    ]},
+    {id:'90days-g3',label:'Phase 4 — Launch & Growth (Weeks 10–13 · May 10 – June 7)',phase:true,items:[
+      {id:'d13',title:'Submit to Apple App Store',note:'Allow 2–7 days for review',prio:'critical',owner:'Patryk'},
+      {id:'d14',title:'Submit to Google Play Store',note:'Usually 1–3 days for review',prio:'critical',owner:'Patryk'},
+      {id:'d15',title:'Run €300 test ad budget across 4 creatives',note:'Find winner before scaling to €800',prio:'critical',owner:'Baris'},
+      {id:'d16',title:'Build list of 50 target B2B prospects',note:'Market research agencies · PR firms · brands',prio:'critical',owner:'Ivo'},
+    ]},
+  ],noteId:'notes-90days',notePlaceholder:'Target: 1,000 users by Week 13 · First B2B deal by end of Month 3'},
+};
+
+let customTasks={};
+let idCounter=1000;
+let ownerMap={};  // id -> [owner1, owner2, ...]
+window.customTasks=customTasks;
+window.ownerMap=ownerMap;
+window.PRIO_LABELS=PRIO_LABELS;
+window.TASKS=TASKS;
+
+function getOwners(id){ return ownerMap[id]||[]; }
+
+function renderOwnerChips(id){
+  const multi=document.getElementById('owner-multi-'+id);
+  const tagSpan=document.getElementById('owner-tag-'+id);
+  if(!multi)return;
+  const owners=getOwners(id);
+  multi.innerHTML=owners.map(o=>
+    `<span class="owner-chip" title="${o}">${o}<span class="owner-chip-remove" onclick="event.stopPropagation();removeOwner('${id}','${o}')">×</span></span>`
+  ).join('')+
+  `<span class="owner-chip owner-chip-add" onclick="event.stopPropagation();showOwnerDropdown('${id}',this)">+ Add</span>`;
+  // update inline tag in text-block
+  if(tagSpan){
+    tagSpan.innerHTML=owners.map(o=>`<span class="owner-tag">${o}</span>`).join('');
+  }
+  // update data-owner for filtering
+  const item=document.querySelector(`[data-id="${id}"]`);
+  if(item)item.dataset.owner=owners.join(',');
 }
 
-function toggle(item) {
-  const box = item.querySelector('.checkbox');
-  const title = item.querySelector('.item-title');
-  box.classList.toggle('done');
-  title.classList.toggle('done');
+function showOwnerDropdown(id,btn){
+  document.querySelectorAll('.owner-dropdown').forEach(d=>d.remove());
+  const current=getOwners(id);
+  const available=OWNERS.filter(o=>!current.includes(o));
+  if(!available.length)return;
+  const drop=document.createElement('div');
+  drop.className='owner-dropdown';
+  drop.innerHTML=available.map(o=>
+    `<div class="owner-dropdown-item" onclick="event.stopPropagation();addOwner('${id}','${o}')">${o}</div>`
+  ).join('');
+  const wrap=document.getElementById('owner-multi-'+id);
+  if(wrap){wrap.appendChild(drop);}
+  setTimeout(()=>document.addEventListener('click',()=>drop.remove(),{once:true}),10);
+}
+
+function addOwner(id,owner){
+  if(!ownerMap[id])ownerMap[id]=[];
+  if(!ownerMap[id].includes(owner))ownerMap[id].push(owner);
+  renderOwnerChips(id);
+  document.querySelectorAll('.owner-dropdown').forEach(d=>d.remove());
+  saveState();
+  applyFilters();
+}
+
+function removeOwner(id,owner){
+  if(!ownerMap[id])return;
+  ownerMap[id]=ownerMap[id].filter(o=>o!==owner);
+  renderOwnerChips(id);
+  saveState();
+  applyFilters();
+}
+
+function refreshDoneGroups(){
+  TASK_TABS.forEach(tab=>{
+    const data=TASKS[tab];
+    if(!data)return;
+    data.groups.forEach(g=>{
+      const container=document.getElementById('items-'+g.id);
+      if(!container)return;
+      const doneItems=[...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done'));
+      const undoneItems=[...container.querySelectorAll('.item')].filter(i=>!i.querySelector('.checkbox.done'));
+      let toggle=container.parentElement.querySelector('.done-toggle');
+      if(doneItems.length===0){if(toggle)toggle.remove();return;}
+      const collapsed=toggle?toggle.dataset.collapsed==='true':true;
+      doneItems.forEach(i=>i.style.display=collapsed?'none':'');
+      if(!toggle){
+        toggle=document.createElement('button');
+        toggle.className='done-toggle';
+        toggle.dataset.collapsed='true';
+        container.parentElement.insertBefore(toggle,container.parentElement.querySelector('.add-task-btn'));
+        toggle.addEventListener('click',()=>{
+          const c=toggle.dataset.collapsed==='true';
+          toggle.dataset.collapsed=(!c).toString();
+          doneItems.forEach(i=>i.style.display=c?'':'none');
+          toggle.innerHTML=c
+            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`
+            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`;
+        });
+      }
+      toggle.innerHTML=collapsed
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`;
+    });
+  });
+}
+
+function refreshFocusTab(){
+  const panel=document.getElementById('panel-focus');
+  if(!panel)return;
+  const critical=[];
+  const now=[];
+  document.querySelectorAll('.item[data-id]').forEach(item=>{
+    if(item.closest('#panel-focus'))return;
+    if(item.querySelector('.checkbox.done'))return;
+    const p=item.dataset.prio;
+    if(p==='critical')critical.push(item);
+    else if(p==='now')now.push(item);
+  });
+  const total=critical.length+now.length;
+  const badge=document.getElementById('badge-focus');
+  if(badge)badge.textContent=total;
+  if(total===0){
+    panel.innerHTML='<div class="focus-empty">🎉 Nothing critical or urgent right now. Nice work.</div>';
+    return;
+  }
+  let html='<div style="margin-bottom:1.5rem"><div class="sec-bar" style="flex:1"><div class="sec-bar-fill" id="bar-focus" style="width:0%"></div></div></div>';
+  if(critical.length){
+    html+=`<div class="focus-section-label">Critical — ${critical.length} task${critical.length!==1?'s':''}</div>`;
+    critical.forEach(item=>{
+      const clone=item.cloneNode(true);
+      clone.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+      clone.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
+      clone.querySelectorAll('select,.delete-btn,.comment-toggle,.item-comment-wrap').forEach(el=>el.remove());
+      clone.style.pointerEvents='none';
+      clone.style.opacity='1';
+      const tab=item.closest('.panel')?.id?.replace('panel-','');
+      const tabLabel=tab?`<span style="font-size:10px;color:#8A8AA8;margin-left:6px">${tab}</span>`:'';
+      const titleEl=clone.querySelector('.item-title');
+      if(titleEl)titleEl.insertAdjacentHTML('afterend',tabLabel);
+      html+=clone.outerHTML;
+    });
+  }
+  if(now.length){
+    html+=`<div class="focus-section-label" style="margin-top:${critical.length?'1.5rem':'0'}">Now — ${now.length} task${now.length!==1?'s':''}</div>`;
+    now.forEach(item=>{
+      const clone=item.cloneNode(true);
+      clone.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+      clone.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
+      clone.querySelectorAll('select,.delete-btn,.comment-toggle,.item-comment-wrap').forEach(el=>el.remove());
+      clone.style.pointerEvents='none';
+      const tab=item.closest('.panel')?.id?.replace('panel-','');
+      const tabLabel=tab?`<span style="font-size:10px;color:#8A8AA8;margin-left:6px">${tab}</span>`:'';
+      const titleEl=clone.querySelector('.item-title');
+      if(titleEl)titleEl.insertAdjacentHTML('afterend',tabLabel);
+      html+=clone.outerHTML;
+    });
+  }
+  panel.innerHTML=html;
+}
+
+function uid(){return 'c'+(idCounter++);}
+
+function makeItemHTML(item,tab){
+  const isDone=item.done||false;
+  const wipTag=item.wip?`<span class="tag tag-wip">In progress</span>`:'';
+  return `<div class="item" data-tab="${tab}" data-id="${item.id}" data-prio="${item.prio||'later'}" data-owner="${item.owner||''}">
+    <div class="item-main">
+      <div class="checkbox${isDone?' done':''}" onclick="toggleItem('${item.id}')"></div>
+      <div class="text-block" onclick="toggleItem('${item.id}')">
+        <div class="item-title${isDone?' done':''}">${escHtml(item.title)}</div>
+        ${item.note?`<div class="item-note-text">${escHtml(item.note)}</div>`:''}
+        <div class="item-tags" id="tags-${item.id}">
+          <span class="tag tag-${item.prio||'later'}" id="prio-tag-${item.id}">${PRIO_LABELS[item.prio||'later']}</span>
+          <div class="owner-multi" id="owner-multi-${item.id}" style="display:inline-flex;gap:4px;flex-wrap:wrap"></div>
+          ${wipTag}
+        </div>
+      </div>
+      <div class="controls">
+        <select class="ctrl prio-${item.prio||'later'}" data-role="prio" data-id="${item.id}" onchange="setPrio('${item.id}',this)">
+          ${PRIOS.map(p=>`<option value="${p.v}"${p.v===(item.prio||'later')?' selected':''}>${p.l}</option>`).join('')}
+        </select>
+
+        ${item.custom?`<button class="delete-btn" onclick="deleteTask('${item.id}','${tab}')" title="Delete task">×</button>`:''}
+      </div>
+    </div>
+    <div class="item-comment-wrap" onclick="event.stopPropagation()">
+      <button class="comment-toggle" id="comment-btn-${item.id}" onclick="event.stopPropagation();toggleComment('${item.id}')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span id="comment-lbl-${item.id}">Add note</span>
+      </button>
+      <textarea class="comment-box" id="comment-${item.id}" placeholder="Add a note to this task…" style="display:none" oninput="saveComment('${item.id}')" onclick="event.stopPropagation()"></textarea>
+    </div>
+  </div>`;
+}
+
+function makeAddForm(groupId,tab){
+  return `<button class="add-task-btn" onclick="openForm('${groupId}')">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add task
+  </button>
+  <div class="add-task-form" id="form-${groupId}">
+    <div class="form-row">
+      <input class="form-input" id="form-title-${groupId}" placeholder="Task title…" style="flex:2">
+      <input class="form-input" id="form-note-${groupId}" placeholder="Note (optional)">
+    </div>
+    <div class="form-row">
+      <select class="form-select" id="form-prio-${groupId}">
+        ${PRIOS.map(p=>`<option value="${p.v}"${p.v==='now'?' selected':''}>${p.l}</option>`).join('')}
+      </select>
+
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeForm('${groupId}')">Cancel</button>
+      <button class="btn-add" onclick="addTask('${groupId}','${tab}')">Add task</button>
+    </div>
+  </div>`;
+}
+
+window.makeItemHTML=function(item,tab){return makeItemHTML(item,tab);};
+window.renderOwnerChips=function(id){return renderOwnerChips(id);};
+window.updateNoteDot=function(id,v){return updateNoteDot(id,v);};
+window.updateAll=function(){return updateAll();};
+window.refreshDoneGroups=function(){return refreshDoneGroups();};
+window.refreshFocusTab=function(){return refreshFocusTab();};
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildTasks(){
+  const main=document.getElementById('main-content');
+  Object.keys(TASKS).forEach(tab=>{
+    const data=TASKS[tab];
+    const panel=document.createElement('div');
+    panel.className='panel'+(tab==='brand'?' active':'');
+    panel.id='panel-'+tab;
+    let html=`<div class="section-prog"><div class="sec-bar"><div class="sec-bar-fill" id="bar-${tab}"></div></div><div class="sec-pct" id="pct-${tab}">0%</div></div>`;
+    data.groups.forEach(g=>{
+      html+=`<div class="group" id="group-${g.id}">`;
+      if(g.phase){html+=`<div class="phase-pill">${g.label}</div>`;}
+      else{html+=`<div class="group-label">${g.label}</div>`;}
+      html+=`<div class="items-container" id="items-${g.id}">`;
+      g.items.forEach(item=>{html+=makeItemHTML(item,tab);});
+      html+=`</div>`;
+      html+=makeAddForm(g.id,tab);
+      html+='</div>';
+    });
+    if(data.noteId){
+      html+=`<div class="notes-section"><div class="notes-label">Tab notes</div>
+        <textarea class="notes-box" id="${data.noteId}" placeholder="${data.notePlaceholder}" oninput="saveTabNote('${tab}')"></textarea>
+        <div class="notes-saved" id="saved-${tab}">Saved</div></div>`;
+    }
+    panel.innerHTML=html;
+    main.appendChild(panel);
+  });
+
+  // Static tabs
+  const inv=document.createElement('div');
+  inv.className='panel';inv.id='panel-investors';
+  inv.innerHTML=`<div class="group"><div class="group-label">Investor pipeline</div>
+    <table class="pipeline-table"><thead><tr><th>Name</th><th>Type</th><th>Potential (€)</th><th>Status</th><th>Next step</th></tr></thead><tbody>
+    <tr><td>Friend (personal network)</td><td>Friends &amp; Family</td><td>10K–20K</td><td><span class="s-identified">Identified</span></td><td>Send pitch deck</td></tr>
+    <tr><td>Agency owner (ex-colleague)</td><td>Strategic Angel</td><td>20K–40K</td><td><span class="s-identified">Identified</span></td><td>Send pitch deck + strategic note</td></tr>
+    <tr><td>Antler Amsterdam</td><td>Accelerator</td><td>20K–50K</td><td><span class="s-identified">Identified</span></td><td>Submit application</td></tr>
+    <tr><td>Rockstart</td><td>Accelerator</td><td>20K–100K</td><td><span class="s-identified">Identified</span></td><td>Submit application</td></tr>
+    <tr><td>Startupbootcamp Amsterdam</td><td>Accelerator</td><td>20K–50K</td><td><span class="s-identified">Identified</span></td><td>Submit application</td></tr>
+    <tr><td>YES!Delft</td><td>Accelerator</td><td>20K–50K</td><td><span class="s-identified">Identified</span></td><td>Check eligibility</td></tr>
+    </tbody></table></div>
+    <div class="notes-section"><div class="notes-label">Notes</div><textarea class="notes-box" id="notes-investors" placeholder="Add investor notes…" oninput="saveTabNote('investors')"></textarea><div class="notes-saved" id="saved-investors">Saved</div></div>`;
+  main.appendChild(inv);
+
+  const b2b=document.createElement('div');
+  b2b.className='panel';b2b.id='panel-b2b';
+  b2b.innerHTML=`<div class="group"><div class="group-label">B2B pipeline</div>
+    <table class="pipeline-table"><thead><tr><th>Company</th><th>Contact</th><th>Tier</th><th>Status</th><th>Next step</th></tr></thead><tbody>
+    <tr><td>Agency owner's company</td><td>Agency owner (personal)</td><td>Professional / Enterprise</td><td><span class="s-warm">Warm lead</span></td><td>Pitch deck meeting</td></tr>
+    <tr><td>TBD — media company</td><td>Unknown</td><td>Enterprise</td><td><span class="s-identified">Identified</span></td><td>Research targets</td></tr>
+    <tr><td>TBD — market research firm</td><td>Unknown</td><td>Professional</td><td><span class="s-identified">Identified</span></td><td>Research targets</td></tr>
+    <tr><td>TBD — brand client via Didem U</td><td>Unknown</td><td>Marketer / Professional</td><td><span class="s-identified">Identified</span></td><td>Ask Didem for introductions</td></tr>
+    <tr><td>TBD — brand client via Ivo</td><td>Unknown</td><td>Professional</td><td><span class="s-identified">Identified</span></td><td>Ask Ivo for introductions</td></tr>
+    </tbody></table></div>
+    <div class="notes-section"><div class="notes-label">Notes</div><textarea class="notes-box" id="notes-b2b" placeholder="Add B2B notes…" oninput="saveTabNote('b2b')"></textarea><div class="notes-saved" id="saved-b2b">Saved</div></div>`;
+  main.appendChild(b2b);
+
+  // Today's focus panel
+  const focus=document.createElement('div');
+  focus.className='panel';
+  focus.id='panel-focus';
+  focus.innerHTML='<div class="focus-empty">Loading…</div>';
+  main.appendChild(focus);
+}
+
+function openForm(groupId){
+  document.querySelectorAll('.add-task-form').forEach(f=>{if(f.id!=='form-'+groupId)f.classList.remove('open');});
+  const form=document.getElementById('form-'+groupId);
+  form.classList.toggle('open');
+  if(form.classList.contains('open')){
+    setTimeout(()=>document.getElementById('form-title-'+groupId).focus(),50);
+  }
+}
+function closeForm(groupId){
+  const form=document.getElementById('form-'+groupId);
+  form.classList.remove('open');
+  document.getElementById('form-title-'+groupId).value='';
+  document.getElementById('form-note-'+groupId).value='';
+}
+
+function addTask(groupId,tab){
+  const titleEl=document.getElementById('form-title-'+groupId);
+  const title=titleEl.value.trim();
+  if(!title)return titleEl.focus();
+  const note=document.getElementById('form-note-'+groupId).value.trim();
+  const prio=document.getElementById('form-prio-'+groupId).value;
+  const owner='';
+  const id=uid();
+  const item={id,title,note,prio,owner,done:false,custom:true};
+  const container=document.getElementById('items-'+groupId);
+  container.insertAdjacentHTML('beforeend',makeItemHTML(item,tab));
+  ownerMap[id]=owner?[owner]:[];
+  renderOwnerChips(id);
+  if(!customTasks[groupId])customTasks[groupId]=[];
+  customTasks[groupId].push(item);
+  closeForm(groupId);
+  saveState();
+  updateAll();
+  refreshDoneGroups();
+  refreshFocusTab();
+  applyFilters();
+}
+
+function deleteTask(id,tab){
+  const item=document.querySelector(`[data-id="${id}"]`);
+  if(item){item.remove();}
+  Object.keys(customTasks).forEach(g=>{
+    customTasks[g]=customTasks[g].filter(t=>t.id!==id);
+  });
+  localStorage.removeItem('vox-comment-'+id);
   saveState();
   updateAll();
 }
 
-function getTabItems(tab) {
-  return document.querySelectorAll(`[data-tab="${tab}"]`);
+function showTab(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  el.classList.add('active');
+  if(id==='focus')refreshFocusTab();
+  applyFilters();
 }
 
-function updateAll() {
-  let totalAll = 0, doneAll = 0;
+function toggleItem(id){
+  const item=document.querySelector(`[data-id="${id}"]`);
+  const cb=item.querySelector('.checkbox');
+  const title=item.querySelector('.item-title');
+  const wasUndone=!cb.classList.contains('done');
+  cb.classList.toggle('done');
+  title.classList.toggle('done');
+  if(wasUndone && typeof confetti!=='undefined'){
+    const rect=cb.getBoundingClientRect();
+    confetti({
+      particleCount:60,
+      spread:55,
+      startVelocity:28,
+      origin:{x:rect.left/window.innerWidth, y:rect.top/window.innerHeight},
+      colors:['#5B3FD0','#00D4A8','#BBA8F7','#7AE8D2','#9178F2'],
+      ticks:180,
+      scalar:0.85
+    });
+  }
+  saveState();updateAll();
+  refreshDoneGroups();
+  refreshFocusTab();
+}
 
-  TABS_WITH_TASKS.forEach(tab => {
-    const items = getTabItems(tab);
-    const total = items.length;
-    const done = [...items].filter(i => i.querySelector('.checkbox.done')).length;
-    totalAll += total;
-    doneAll += done;
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-    const bar = document.getElementById('bar-' + tab);
-    const pctEl = document.getElementById('pct-' + tab);
-    const badge = document.getElementById('badge-' + tab);
-    if (bar) bar.style.width = pct + '%';
-    if (pctEl) pctEl.textContent = pct + '%';
-    if (badge) badge.textContent = done + '/' + total;
+function setPrio(id,sel){
+  const val=sel.value;
+  sel.className='ctrl prio-'+val;
+  const item=document.querySelector(`[data-id="${id}"]`);
+  if(item)item.dataset.prio=val;
+  const tag=document.getElementById('prio-tag-'+id);
+  if(tag){tag.className='tag tag-'+val;tag.textContent=PRIO_LABELS[val];}
+  saveState();applyFilters();
+}
+
+function setOwner(id,sel){
+  const val=sel.value;
+  sel.className='ctrl '+(val?'owner-sel':'owner-none');
+  const item=document.querySelector(`[data-id="${id}"]`);
+  if(item)item.dataset.owner=val;
+  const tag=document.getElementById('owner-tag-'+id);
+  if(tag){tag.textContent=val;tag.style.display=val?'':'none';}
+  saveState();applyFilters();
+}
+
+function toggleComment(id){
+  const box=document.getElementById('comment-'+id);
+  const lbl=document.getElementById('comment-lbl-'+id);
+  if(!box||!lbl)return;
+  const isOpen=box.style.display==='block';
+  if(isOpen){
+    box.style.display='none';
+    lbl.textContent='Add note';
+  } else {
+    box.style.display='block';
+    lbl.textContent='Hide note';
+    setTimeout(()=>box.focus(),10);
+  }
+}
+
+function applyFilters(){
+  const q=document.getElementById('search-box').value.toLowerCase().trim();
+  const owner=document.getElementById('filter-owner').value;
+  const prio=document.getElementById('filter-prio').value;
+  let visible=0;
+  document.querySelectorAll('.item[data-id]').forEach(item=>{
+    const title=item.querySelector('.item-title').textContent.toLowerCase();
+    const note=item.querySelector('.item-note-text')?.textContent.toLowerCase()||'';
+    const matchQ=!q||(title.includes(q)||note.includes(q));
+    const matchOwner=!owner||(item.dataset.owner||'').includes(owner);
+    const matchPrio=!prio||(item.dataset.prio||'')===prio;
+    const show=matchQ&&matchOwner&&matchPrio;
+    item.classList.toggle('hidden',!show);
+    if(show)visible++;
   });
-
-  const overall = totalAll > 0 ? Math.round((doneAll / totalAll) * 100) : 0;
-  document.getElementById('overall-pct').textContent = overall + '%';
-  document.getElementById('overall-fill').style.width = overall + '%';
-  document.getElementById('stat-done').textContent = doneAll;
-  document.getElementById('stat-left').textContent = totalAll - doneAll;
-  document.getElementById('stat-total').textContent = totalAll;
+  const total=document.querySelectorAll('.item[data-id]').length;
+  const countEl=document.getElementById('search-count');
+  const noRes=document.getElementById('no-results');
+  if(q||owner||prio){
+    countEl.textContent=`${visible} of ${total} tasks`;
+    noRes.classList.toggle('show',visible===0);
+  } else {
+    countEl.textContent='';noRes.classList.remove('show');
+  }
 }
 
-let noteTimers = {};
-function saveNote(tab) {
+function clearFilters(){
+  document.getElementById('search-box').value='';
+  document.getElementById('filter-owner').value='';
+  document.getElementById('filter-prio').value='';
+  applyFilters();
+}
+
+function updateAll(){
+  let totalAll=0,doneAll=0;
+  TASK_TABS.forEach(tab=>{
+    const items=document.querySelectorAll(`[data-tab="${tab}"]`);
+    const total=items.length;
+    const done=[...items].filter(i=>i.querySelector('.checkbox.done')).length;
+    totalAll+=total;doneAll+=done;
+    const pct=total>0?Math.round((done/total)*100):0;
+    const bar=document.getElementById('bar-'+tab);
+    const pctEl=document.getElementById('pct-'+tab);
+    const badge=document.getElementById('badge-'+tab);
+    if(bar)bar.style.width=pct+'%';
+    if(pctEl)pctEl.textContent=pct+'%';
+    if(badge)badge.textContent=done+'/'+total;
+  });
+  const overall=totalAll>0?Math.round((doneAll/totalAll)*100):0;
+  document.getElementById('overall-pct').textContent=overall+'%';
+  document.getElementById('overall-fill').style.width=overall+'%';
+  document.getElementById('stat-done').textContent=doneAll;
+  document.getElementById('stat-left').textContent=totalAll-doneAll;
+  document.getElementById('stat-total').textContent=totalAll;
+}
+
+let noteTimers={},commentTimers={};
+function saveTabNote(tab){
   clearTimeout(noteTimers[tab]);
-  noteTimers[tab] = setTimeout(() => {
-    const val = document.getElementById('notes-' + tab).value;
-    localStorage.setItem('vox-note-' + tab, val);
-    const saved = document.getElementById('saved-' + tab);
-    if (saved) { saved.classList.add('show'); setTimeout(() => saved.classList.remove('show'), 1500); }
-  }, 600);
+  noteTimers[tab]=setTimeout(()=>{
+    const key=TASKS[tab]?.noteId||('notes-'+tab);
+    const el=document.getElementById(key);
+    if(el){
+      localStorage.setItem('vox-tabnote-'+tab,el.value);
+      if(window.saveNotesToFirebase)window.saveNotesToFirebase(tab,el.value);
+    }
+    const s=document.getElementById('saved-'+tab);
+    if(s){s.classList.add('show');setTimeout(()=>s.classList.remove('show'),1500);}
+  },600);
+}
+function saveComment(id){
+  clearTimeout(commentTimers[id]);
+  commentTimers[id]=setTimeout(()=>{
+    const el=document.getElementById('comment-'+id);
+    if(el){
+      localStorage.setItem('vox-comment-'+id,el.value);
+      updateNoteDot(id,el.value.trim().length>0);
+      if(window.saveToFirebase)window.saveToFirebase();
+    }
+  },600);
 }
 
-function saveState() {
-  const state = {};
-  document.querySelectorAll('.item[data-tab]').forEach((item, i) => {
-    state[i] = item.querySelector('.checkbox').classList.contains('done');
+function updateNoteDot(id,hasContent){
+  const btn=document.getElementById('comment-btn-'+id);
+  if(!btn)return;
+  let dot=btn.querySelector('.note-dot');
+  if(hasContent&&!dot){
+    dot=document.createElement('span');
+    dot.className='note-dot';
+    btn.appendChild(dot);
+  } else if(!hasContent&&dot){
+    dot.remove();
+  }
+}
+
+function saveState(){
+  localStorage.setItem('vox-custom',JSON.stringify(customTasks));
+  localStorage.setItem('vox-owners',JSON.stringify(ownerMap));
+  if(window.saveToFirebase){ window.saveToFirebase(); window.showSyncDot&&window.showSyncDot(true); }
+}
+
+function loadState(){
+  // Local storage fallback (Firebase listener will override)
+  const savedCustom=localStorage.getItem('vox-custom');
+  if(savedCustom){
+    const ct=JSON.parse(savedCustom);
+    Object.keys(ct).forEach(groupId=>{
+      const container=document.getElementById('items-'+groupId);
+      if(!container)return;
+      const tab=container.closest('.panel')?.id?.replace('panel-','');
+      ct[groupId].forEach(item=>{
+        container.insertAdjacentHTML('beforeend',makeItemHTML(item,tab||''));
+        if(!customTasks[groupId])customTasks[groupId]=[];
+        customTasks[groupId].push(item);
+      });
+    });
+  }
+  // Restore state
+  const raw=localStorage.getItem('vox-state-v5');
+  if(raw){
+    const state=JSON.parse(raw);
+    Object.keys(state).forEach(id=>{
+      const item=document.querySelector(`[data-id="${id}"]`);
+      if(!item)return;
+      const s=state[id];
+      if(s.done){item.querySelector('.checkbox').classList.add('done');item.querySelector('.item-title').classList.add('done');}
+      if(s.prio){
+        const ps=item.querySelector('[data-role="prio"]');
+        if(ps){ps.value=s.prio;ps.className='ctrl prio-'+s.prio;}
+        item.dataset.prio=s.prio;
+        const tag=document.getElementById('prio-tag-'+id);
+        if(tag){tag.className='tag tag-'+s.prio;tag.textContent=PRIO_LABELS[s.prio];}
+      }
+      if(s.owner!==null&&s.owner!==undefined){
+        const os=item.querySelector('[data-role="owner"]');
+        if(os){os.value=s.owner;os.className='ctrl '+(s.owner?'owner-sel':'owner-none');}
+        item.dataset.owner=s.owner;
+        const tag=document.getElementById('owner-tag-'+id);
+        if(tag){tag.textContent=s.owner;tag.style.display=s.owner?'':'none';}
+      }
+    });
+  }
+  // Restore owner map
+  const savedOwners=localStorage.getItem('vox-owners');
+  if(savedOwners){
+    const om=JSON.parse(savedOwners);
+    Object.keys(om).forEach(id=>{ownerMap[id]=om[id];});
+  }
+  // Render owner chips for all items (using saved or default)
+  document.querySelectorAll('.item[data-id]').forEach(item=>{
+    const id=item.dataset.id;
+    if(!ownerMap[id]){
+      // init from data-owner default
+      const def=item.dataset.owner;
+      ownerMap[id]=def?[def]:[];
+    }
+    renderOwnerChips(id);
   });
-  localStorage.setItem('vox-state', JSON.stringify(state));
-}
-
-function loadState() {
-  const raw = localStorage.getItem('vox-state');
-  if (!raw) return;
-  const state = JSON.parse(raw);
-  document.querySelectorAll('.item[data-tab]').forEach((item, i) => {
-    if (state[i]) {
-      item.querySelector('.checkbox').classList.add('done');
-      item.querySelector('.item-title').classList.add('done');
+  // Tab notes
+  [...Object.keys(TASKS),'investors','b2b'].forEach(tab=>{
+    const key=TASKS[tab]?.noteId||('notes-'+tab);
+    const el=document.getElementById(key);
+    const saved=localStorage.getItem('vox-tabnote-'+tab);
+    if(el&&saved)el.value=saved;
+  });
+  // Comments
+  document.querySelectorAll('.item[data-id]').forEach(item=>{
+    const id=item.dataset.id;
+    const saved=localStorage.getItem('vox-comment-'+id);
+    const box=document.getElementById('comment-'+id);
+    const lbl=document.getElementById('comment-lbl-'+id);
+    if(saved&&saved.trim()){
+      if(box){box.value=saved;}
+      if(lbl)lbl.textContent='Add note';
+      updateNoteDot(id,true);
+    }
+    if(box){
+      box.addEventListener('blur',()=>{
+        if(!box.value.trim()){
+          box.style.display='none';
+          if(lbl)lbl.textContent='Add note';
+          localStorage.removeItem('vox-comment-'+id);
+        }
+      });
     }
   });
-  ['brand','pitch','legal','product','gtm','fundraising','team','investors','b2b','90days'].forEach(tab => {
-    const el = document.getElementById('notes-' + tab);
-    if (el) el.value = localStorage.getItem('vox-note-' + tab) || '';
+  // Handle Enter key on form title inputs
+  document.querySelectorAll('[id^="form-title-"]').forEach(input=>{
+    const groupId=input.id.replace('form-title-','');
+    const panel=input.closest('.panel');
+    const tab=panel?.id?.replace('panel-','')||'';
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')addTask(groupId,tab);});
   });
 }
 
+buildTasks();
 loadState();
 updateAll();
+applyFilters();
+refreshDoneGroups();
+refreshFocusTab();
+
+// Close open comment boxes when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.item-comment-wrap')) {
+    document.querySelectorAll('.comment-box').forEach(box => {
+      if (box.style.display === 'block') {
+        const id = box.id.replace('comment-', '');
+        const lbl = document.getElementById('comment-lbl-' + id);
+        box.style.display = 'none';
+        if (lbl) lbl.textContent = 'Add note';
+        updateNoteDot(id, box.value.trim().length > 0);
+      }
+    });
+  }
+});
+
+// Enter key support added after DOM build
+document.querySelectorAll('[id^="form-title-"]').forEach(input=>{
+  const groupId=input.id.replace('form-title-','');
+  const panel=input.closest('.panel');
+  const tab=panel?.id?.replace('panel-','')||'';
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')addTask(groupId,tab);});
+});
 </script>
 </body>
 </html>
