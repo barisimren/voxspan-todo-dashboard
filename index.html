@@ -275,50 +275,41 @@ window.startFirebaseListeners = function() {
     const data = snap.data();
     if (!data || !data.tasks) return;
 
-    try {
-      const ct = JSON.parse(data.tasks);
-      // Clear existing custom tasks from DOM
-      document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
-      Object.keys(customTasks).forEach(k => delete customTasks[k]);
-      // Re-add from Firebase
-      Object.keys(ct).forEach(groupId => {
-        const container = document.getElementById('items-' + groupId);
-        if (!container) return;
-        const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
-        (ct[groupId] || []).forEach(item => {
-          container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
-          if (!customTasks[groupId]) customTasks[groupId] = [];
-          customTasks[groupId].push(item);
-        });
-      });
-    } catch(e) { console.warn('Custom tasks restore error:', e); }
-
-    // After re-adding, apply saved state from STATE_DOC
+    // Fetch STATE_DOC first, THEN rebuild custom tasks with correct state
     STATE_DOC.get().then(stateSnap => {
-      if (stateSnap.exists) {
-        const state = stateSnap.data();
-        document.querySelectorAll('.item[data-id^="c"]').forEach(item => {
-          const id = item.dataset.id;
-          const s = state[id];
-          if (!s) return;
-          const cb = item.querySelector('.checkbox');
-          const title = item.querySelector('.item-title');
-          if (s.done === true)  { cb.classList.add('done');    title.classList.add('done'); }
-          if (s.done === false) { cb.classList.remove('done'); title.classList.remove('done'); }
-          if (s.prio) {
-            const ps = item.querySelector('[data-role="prio"]');
-            if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
-            item.dataset.prio = s.prio;
-            const tag = document.getElementById('prio-tag-' + id);
-            if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
-          }
-          if (s.owners) { ownerMap[id] = s.owners; renderOwnerChips(id); }
+      const state = (stateSnap.exists && stateSnap.data()) || {};
+
+      try {
+        const ct = JSON.parse(data.tasks);
+        // Clear existing custom tasks from DOM
+        document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
+        Object.keys(customTasks).forEach(k => delete customTasks[k]);
+        // Re-add with state already applied
+        Object.keys(ct).forEach(groupId => {
+          const container = document.getElementById('items-' + groupId);
+          if (!container) return;
+          const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
+          (ct[groupId] || []).forEach(item => {
+            // Apply saved state before rendering
+            const s = state[item.id];
+            if (s) {
+              item.done  = s.done  !== undefined ? s.done  : item.done;
+              item.prio  = s.prio  || item.prio;
+            }
+            container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
+            if (!customTasks[groupId]) customTasks[groupId] = [];
+            customTasks[groupId].push(item);
+            // Apply owners
+            if (s && s.owners) { ownerMap[item.id] = s.owners; renderOwnerChips(item.id); }
+          });
         });
-      }
+      } catch(e) { console.warn('Custom tasks restore error:', e); }
+
       updateAll();
       refreshDoneGroups();
       refreshFocusTab();
-    }).catch(() => {
+    }).catch(e => {
+      console.warn('STATE_DOC fetch error:', e);
       updateAll();
       refreshDoneGroups();
       refreshFocusTab();
