@@ -177,7 +177,6 @@ window.saveToFirebase = function() {
   const state = {};
   document.querySelectorAll('.item[data-id]').forEach(item => {
     const id = item.dataset.id;
-    if (id.startsWith('c')) return; // custom tasks saved separately
     const ps = item.querySelector('[data-role="prio"]');
     const box = document.getElementById('comment-' + id);
     state[id] = {
