@@ -225,7 +225,7 @@ window.startFirebaseListeners = function() {
 
     Object.keys(state).forEach(id => {
       const item = document.querySelector('[data-id="' + id + '"]');
-      if (!item) { if(id.startsWith('c')) console.log('Custom task not in DOM yet:', id); return; }
+      if (!item) return;
       const s = state[id];
       const cb    = item.querySelector('.checkbox');
       const title = item.querySelector('.item-title');
@@ -604,6 +604,8 @@ function removeOwner(id,owner){
   applyFilters();
 }
 
+function getDoneItems(container){ return [...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done')); }
+
 function refreshDoneGroups(){
   TASK_TABS.forEach(tab=>{
     const data=TASKS[tab];
@@ -611,12 +613,23 @@ function refreshDoneGroups(){
     data.groups.forEach(g=>{
       const container=document.getElementById('items-'+g.id);
       if(!container)return;
-      const doneItems=[...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done'));
-      const undoneItems=[...container.querySelectorAll('.item')].filter(i=>!i.querySelector('.checkbox.done'));
+      const doneItems=getDoneItems(container);
       let toggle=container.parentElement.querySelector('.done-toggle');
-      if(doneItems.length===0){if(toggle)toggle.remove();return;}
+      if(doneItems.length===0){
+        if(toggle)toggle.remove();
+        container.querySelectorAll('.item').forEach(i=>i.style.display='');
+        return;
+      }
       const collapsed=toggle?toggle.dataset.collapsed==='true':true;
-      doneItems.forEach(i=>i.style.display=collapsed?'none':'');
+      // Re-query and apply visibility to ALL items in container
+      [...container.querySelectorAll('.item')].forEach(i=>{
+        const isDone=!!i.querySelector('.checkbox.done');
+        if(isDone) i.style.display=collapsed?'none':'';
+        else i.style.display='';
+      });
+      const label = collapsed
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`;
       if(!toggle){
         toggle=document.createElement('button');
         toggle.className='done-toggle';
@@ -625,15 +638,15 @@ function refreshDoneGroups(){
         toggle.addEventListener('click',()=>{
           const c=toggle.dataset.collapsed==='true';
           toggle.dataset.collapsed=(!c).toString();
-          doneItems.forEach(i=>i.style.display=c?'':'none');
+          // Re-query at click time
+          const current=getDoneItems(container);
+          current.forEach(i=>i.style.display=c?'':'none');
           toggle.innerHTML=c
-            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`
-            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`;
+            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${current.length})`
+            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${current.length})`;
         });
       }
-      toggle.innerHTML=collapsed
-        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`
-        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`;
+      toggle.innerHTML=label;
     });
   });
 }
