@@ -202,20 +202,30 @@ window.showSyncDot = function(ok) {
 
 window.startFirebaseListeners = function() {
   if (!DOC) return;
+  let initialLoadDone = false;
 
   DOC.onSnapshot(snap => {
-    if (suppressListener || !snap.exists) return;
+    if (suppressListener) return;
+
+    if (!snap.exists) {
+      // No data in Firebase yet — just render defaults as-is
+      initialLoadDone = true;
+      updateAll();
+      refreshDoneGroups();
+      refreshFocusTab();
+      return;
+    }
+
     const state = snap.data();
     if (!state) return;
 
-    // Restore custom tasks — clear first to avoid duplicates
+    // ALWAYS clear and re-add custom tasks to avoid duplicates
+    document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
+    Object.keys(customTasks).forEach(k => delete customTasks[k]);
+
     if (state['xCustomx']) {
       try {
         const ct = JSON.parse(state['xCustomx']);
-        // Remove all existing custom tasks from DOM first
-        document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
-        Object.keys(customTasks).forEach(k => delete customTasks[k]);
-        // Re-add from Firebase
         Object.keys(ct).forEach(groupId => {
           const container = document.getElementById('items-' + groupId);
           if (!container) return;
@@ -237,7 +247,7 @@ window.startFirebaseListeners = function() {
       } catch(e) {}
     }
 
-    // Restore each task state
+    // Update state for all items
     Object.keys(state).forEach(id => {
       if (id === 'xCustomx' || id === 'xOwnerMapx') return;
       const item = document.querySelector('[data-id="' + id + '"]');
@@ -246,13 +256,11 @@ window.startFirebaseListeners = function() {
       const cb = item.querySelector('.checkbox');
       const title = item.querySelector('.item-title');
 
-      // Done state
       if (s.done !== undefined) {
         if (s.done && !cb.classList.contains('done')) { cb.classList.add('done'); title.classList.add('done'); }
         if (!s.done && cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
       }
 
-      // Priority
       if (s.prio) {
         const ps = item.querySelector('[data-role="prio"]');
         if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
@@ -261,17 +269,15 @@ window.startFirebaseListeners = function() {
         if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
       }
 
-      // Owners
       if (s.owners) {
         ownerMap[id] = s.owners;
         renderOwnerChips(id);
       }
 
-      // Comment
-      if (s.comment) {
+      if (s.comment !== undefined) {
         const box = document.getElementById('comment-' + id);
         const lbl = document.getElementById('comment-lbl-' + id);
-        if (box && box.value !== s.comment) {
+        if (box && s.comment && box.value !== s.comment) {
           box.value = s.comment;
           localStorage.setItem('vox-comment-' + id, s.comment);
           if (s.comment.trim()) {
@@ -283,6 +289,7 @@ window.startFirebaseListeners = function() {
       }
     });
 
+    initialLoadDone = true;
     updateAll();
     refreshDoneGroups();
     refreshFocusTab();
