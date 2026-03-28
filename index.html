@@ -1093,11 +1093,18 @@ function loadState(){
 }
 
 buildTasks();
+
+// Reset all items to undone — Firebase will set real state
+document.querySelectorAll('.item[data-id]').forEach(item => {
+  item.querySelector('.checkbox').classList.remove('done');
+  item.querySelector('.item-title').classList.remove('done');
+});
+
 updateAll();
 applyFilters();
 refreshDoneGroups();
 refreshFocusTab();
-// Firebase is the single source of truth - no localStorage load
+// Firebase is the single source of truth
 try { if (window.startFirebaseListeners) window.startFirebaseListeners(); } catch(e) { console.warn('Firebase sync unavailable'); }
 
 // Close open comment boxes when clicking outside
