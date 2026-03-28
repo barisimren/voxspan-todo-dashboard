@@ -176,8 +176,8 @@ window.saveToFirebase = function() {
       comment: localStorage.getItem('vox-comment-' + id) || ''
     };
   });
-  state['__custom__'] = JSON.stringify(customTasks || {});
-  state['__ownerMap__'] = JSON.stringify(ownerMap || {});
+  state['xCustomx'] = JSON.stringify(customTasks || {});
+  state['xOwnerMapx'] = JSON.stringify(ownerMap || {});
   DOC.set(state).then(() => {
     window.showSyncDot(true);
   }).catch(e => console.warn('Firebase save error', e));
@@ -209,9 +209,9 @@ window.startFirebaseListeners = function() {
     if (!state) return;
 
     // Restore custom tasks
-    if (state['__custom__']) {
+    if (state['xCustomx']) {
       try {
-        const ct = JSON.parse(state['__custom__']);
+        const ct = JSON.parse(state['xCustomx']);
         Object.keys(ct).forEach(groupId => {
           const container = document.getElementById('items-' + groupId);
           if (!container) return;
@@ -228,16 +228,16 @@ window.startFirebaseListeners = function() {
     }
 
     // Restore owner map
-    if (state['__ownerMap__']) {
+    if (state['xOwnerMapx']) {
       try {
-        const om = JSON.parse(state['__ownerMap__']);
+        const om = JSON.parse(state['xOwnerMapx']);
         Object.keys(om).forEach(id => { ownerMap[id] = om[id]; });
       } catch(e) {}
     }
 
     // Restore each task state
     Object.keys(state).forEach(id => {
-      if (id.startsWith('__')) return;
+      if (id === 'xCustomx' || id === 'xOwnerMapx') return;
       const item = document.querySelector('[data-id="' + id + '"]');
       if (!item) return;
       const s = state[id];
