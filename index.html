@@ -356,10 +356,7 @@ const TASKS={
 let customTasks={};
 let idCounter=1000;
 let ownerMap={};  // id -> [owner1, owner2, ...]
-window.customTasks=customTasks;
-window.ownerMap=ownerMap;
-window.PRIO_LABELS=PRIO_LABELS;
-window.TASKS=TASKS;
+
 
 function getOwners(id){ return ownerMap[id]||[]; }
 
@@ -559,12 +556,7 @@ function makeAddForm(groupId,tab){
   </div>`;
 }
 
-window.makeItemHTML=function(item,tab){return makeItemHTML(item,tab);};
-window.renderOwnerChips=function(id){return renderOwnerChips(id);};
-window.updateNoteDot=function(id,v){return updateNoteDot(id,v);};
-window.updateAll=function(){return updateAll();};
-window.refreshDoneGroups=function(){return refreshDoneGroups();};
-window.refreshFocusTab=function(){return refreshFocusTab();};
+
 function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
