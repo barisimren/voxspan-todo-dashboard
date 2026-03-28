@@ -187,7 +187,7 @@ window.saveToFirebase = function() {
       comment: box ? box.value : ''
     };
   });
-  STATE_DOC.set(state)
+  STATE_DOC.set(state, { merge: true })
     .then(() => window.showSyncDot(true))
     .catch(e => console.warn('State save error:', e));
 
