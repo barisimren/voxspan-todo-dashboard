@@ -289,6 +289,13 @@ window.startFirebaseListeners = function() {
       }
     });
 
+    // Render owner chips for all items
+    document.querySelectorAll('.item[data-id]').forEach(item => {
+      const id = item.dataset.id;
+      if(!ownerMap[id]) ownerMap[id] = [];
+      renderOwnerChips(id);
+    });
+
     initialLoadDone = true;
     updateAll();
     refreshDoneGroups();
@@ -1000,106 +1007,15 @@ function updateNoteDot(id,hasContent){
 }
 
 function saveState(){
-  localStorage.setItem('vox-custom',JSON.stringify(customTasks));
-  localStorage.setItem('vox-owners',JSON.stringify(ownerMap));
   if(window.saveToFirebase){ window.saveToFirebase(); window.showSyncDot&&window.showSyncDot(true); }
 }
 
-function loadState(){
-  // Local storage fallback (Firebase listener will override)
-  const savedCustom=localStorage.getItem('vox-custom');
-  if(savedCustom){
-    const ct=JSON.parse(savedCustom);
-    Object.keys(ct).forEach(groupId=>{
-      const container=document.getElementById('items-'+groupId);
-      if(!container)return;
-      const tab=container.closest('.panel')?.id?.replace('panel-','');
-      ct[groupId].forEach(item=>{
-        container.insertAdjacentHTML('beforeend',makeItemHTML(item,tab||''));
-        if(!customTasks[groupId])customTasks[groupId]=[];
-        customTasks[groupId].push(item);
-      });
-    });
-  }
-  // Restore state
-  const raw=localStorage.getItem('vox-state-v5');
-  if(raw){
-    const state=JSON.parse(raw);
-    Object.keys(state).forEach(id=>{
-      const item=document.querySelector(`[data-id="${id}"]`);
-      if(!item)return;
-      const s=state[id];
-      if(s.done){item.querySelector('.checkbox').classList.add('done');item.querySelector('.item-title').classList.add('done');}
-      if(s.prio){
-        const ps=item.querySelector('[data-role="prio"]');
-        if(ps){ps.value=s.prio;ps.className='ctrl prio-'+s.prio;}
-        item.dataset.prio=s.prio;
-        const tag=document.getElementById('prio-tag-'+id);
-        if(tag){tag.className='tag tag-'+s.prio;tag.textContent=PRIO_LABELS[s.prio];}
-      }
-      if(s.owner!==null&&s.owner!==undefined){
-        const os=item.querySelector('[data-role="owner"]');
-        if(os){os.value=s.owner;os.className='ctrl '+(s.owner?'owner-sel':'owner-none');}
-        item.dataset.owner=s.owner;
-        const tag=document.getElementById('owner-tag-'+id);
-        if(tag){tag.textContent=s.owner;tag.style.display=s.owner?'':'none';}
-      }
-    });
-  }
-  // Restore owner map
-  const savedOwners=localStorage.getItem('vox-owners');
-  if(savedOwners){
-    const om=JSON.parse(savedOwners);
-    Object.keys(om).forEach(id=>{ownerMap[id]=om[id];});
-  }
-  // Render owner chips for all items (using saved or default)
-  document.querySelectorAll('.item[data-id]').forEach(item=>{
-    const id=item.dataset.id;
-    if(!ownerMap[id]){
-      // init from data-owner default
-      const def=item.dataset.owner;
-      ownerMap[id]=def?[def]:[];
-    }
-    renderOwnerChips(id);
-  });
-  // Tab notes
-  [...Object.keys(TASKS),'investors','b2b'].forEach(tab=>{
-    const key=TASKS[tab]?.noteId||('notes-'+tab);
-    const el=document.getElementById(key);
-    const saved=localStorage.getItem('vox-tabnote-'+tab);
-    if(el&&saved)el.value=saved;
-  });
-  // Comments
-  document.querySelectorAll('.item[data-id]').forEach(item=>{
-    const id=item.dataset.id;
-    const saved=localStorage.getItem('vox-comment-'+id);
-    const box=document.getElementById('comment-'+id);
-    const lbl=document.getElementById('comment-lbl-'+id);
-    if(saved&&saved.trim()){
-      if(box){box.value=saved;}
-      if(lbl)lbl.textContent='Add note';
-      updateNoteDot(id,true);
-    }
-    if(box){
-      box.addEventListener('blur',()=>{
-        if(!box.value.trim()){
-          box.style.display='none';
-          if(lbl)lbl.textContent='Add note';
-          localStorage.removeItem('vox-comment-'+id);
-        }
-      });
-    }
-  });
-  // Handle Enter key on form title inputs
-  document.querySelectorAll('[id^="form-title-"]').forEach(input=>{
-    const groupId=input.id.replace('form-title-','');
-    const panel=input.closest('.panel');
-    const tab=panel?.id?.replace('panel-','')||'';
-    input.addEventListener('keydown',e=>{if(e.key==='Enter')addTask(groupId,tab);});
-  });
-}
-
 buildTasks();
+
+// Clear all stale localStorage data — Firebase is source of truth
+Object.keys(localStorage).forEach(k => {
+  if(k.startsWith('vox-')) localStorage.removeItem(k);
+});
 
 // Reset all items to undone — Firebase will set real state
 document.querySelectorAll('.item[data-id]').forEach(item => {
