@@ -208,20 +208,22 @@ window.startFirebaseListeners = function() {
     const state = snap.data();
     if (!state) return;
 
-    // Restore custom tasks
+    // Restore custom tasks — clear first to avoid duplicates
     if (state['xCustomx']) {
       try {
         const ct = JSON.parse(state['xCustomx']);
+        // Remove all existing custom tasks from DOM first
+        document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
+        Object.keys(customTasks).forEach(k => delete customTasks[k]);
+        // Re-add from Firebase
         Object.keys(ct).forEach(groupId => {
           const container = document.getElementById('items-' + groupId);
           if (!container) return;
           const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
           (ct[groupId] || []).forEach(item => {
-            if (!document.querySelector('[data-id="' + item.id + '"]')) {
-              container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
-              if (!customTasks[groupId]) customTasks[groupId] = [];
-              customTasks[groupId].push(item);
-            }
+            container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
+            if (!customTasks[groupId]) customTasks[groupId] = [];
+            customTasks[groupId].push(item);
           });
         });
       } catch(e) {}
@@ -1091,12 +1093,11 @@ function loadState(){
 }
 
 buildTasks();
-loadState();
 updateAll();
 applyFilters();
 refreshDoneGroups();
 refreshFocusTab();
-// Start Firebase real-time sync after DOM is built
+// Firebase is the single source of truth - no localStorage load
 try { if (window.startFirebaseListeners) window.startFirebaseListeners(); } catch(e) { console.warn('Firebase sync unavailable'); }
 
 // Close open comment boxes when clicking outside
