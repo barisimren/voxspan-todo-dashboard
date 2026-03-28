@@ -269,7 +269,7 @@ window.startFirebaseListeners = function() {
     if (bar) bar.style.opacity = '1';
   });
 
-  // 2. Custom tasks listener — re-adds tasks and applies their saved state
+  // 2. Custom tasks listener — only adds NEW tasks, never touches existing ones
   CUSTOM_DOC.onSnapshot(snap => {
     if (!snap.exists) return;
     const data = snap.data();
@@ -277,58 +277,48 @@ window.startFirebaseListeners = function() {
 
     try {
       const ct = JSON.parse(data.tasks);
+      const allIds = new Set();
 
-      // Capture current DOM state of existing custom tasks before clearing
-      const existingState = {};
-      document.querySelectorAll('.item[data-id^="c"]').forEach(el => {
-        const id = el.dataset.id;
-        const ps = el.querySelector('[data-role="prio"]');
-        existingState[id] = {
-          done:   el.querySelector('.checkbox').classList.contains('done'),
-          prio:   ps ? ps.value : 'later',
-          owners: ownerMap[id] || []
-        };
-      });
-
-      // Clear existing custom tasks from DOM
-      document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
-      Object.keys(customTasks).forEach(k => delete customTasks[k]);
-
-      // Re-add with preserved state
+      // Add only tasks not already in DOM
       Object.keys(ct).forEach(groupId => {
         const container = document.getElementById('items-' + groupId);
         if (!container) return;
         const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
         (ct[groupId] || []).forEach(item => {
-          const s = existingState[item.id];
-          if (s) {
-            item.done = s.done;
-            item.prio = s.prio;
-          }
+          allIds.add(item.id);
+          if (document.querySelector('[data-id="' + item.id + '"]')) return; // already exists
+          // New task — fetch its state from STATE_DOC before adding
           container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
           if (!customTasks[groupId]) customTasks[groupId] = [];
           customTasks[groupId].push(item);
-          if (s && s.owners) { ownerMap[item.id] = s.owners; renderOwnerChips(item.id); }
-          else if (!ownerMap[item.id]) { ownerMap[item.id] = []; renderOwnerChips(item.id); }
+          if (!ownerMap[item.id]) { ownerMap[item.id] = []; renderOwnerChips(item.id); }
         });
       });
 
-      // Then fetch STATE_DOC to get state for tasks new to this device
+      // Remove tasks deleted on another device
+      document.querySelectorAll('.item[data-id^="c"]').forEach(el => {
+        if (!allIds.has(el.dataset.id)) {
+          el.remove();
+          Object.keys(customTasks).forEach(g => {
+            customTasks[g] = (customTasks[g] || []).filter(t => t.id !== el.dataset.id);
+          });
+        }
+      });
+
+      // Apply STATE_DOC state to any newly added tasks
       STATE_DOC.get().then(stateSnap => {
         const state = (stateSnap.exists && stateSnap.data()) || {};
         document.querySelectorAll('.item[data-id^="c"]').forEach(item => {
           const id = item.dataset.id;
-          // Only apply Firebase state if we had no local state for this id
-          if (existingState[id]) return;
           const s = state[id];
           if (!s) return;
           const cb = item.querySelector('.checkbox');
           const title = item.querySelector('.item-title');
-          if (s.done === true)  { cb.classList.add('done');    title.classList.add('done'); }
-          if (s.done === false) { cb.classList.remove('done'); title.classList.remove('done'); }
+          if (s.done === true  && !cb.classList.contains('done')) { cb.classList.add('done');    title.classList.add('done'); }
+          if (s.done === false &&  cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
           if (s.prio) {
             const ps = item.querySelector('[data-role="prio"]');
-            if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
+            if (ps && ps.value !== s.prio) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
             item.dataset.prio = s.prio;
             const tag = document.getElementById('prio-tag-' + id);
             if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
@@ -940,12 +930,7 @@ function toggleItem(id){
   saveState();updateAll();
   refreshDoneGroups();
   refreshFocusTab();
-  // Debug: log done items in all containers
-  document.querySelectorAll('[id^="items-"]').forEach(c => {
-    const done = c.querySelectorAll('.checkbox.done').length;
-    const total = c.querySelectorAll('.item').length;
-    if(total > 0) console.log(c.id, 'done:', done, '/', total, 'hidden:', [...c.querySelectorAll('.item')].filter(i=>i.style.display==='none').length);
-  });
+
 }
 
 function setPrio(id,sel){
