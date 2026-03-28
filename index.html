@@ -149,18 +149,23 @@ const firebaseConfig = {
   messagingSenderId: "630457670269",
   appId: "1:630457670269:web:02f8da305a84c656e32f14"
 };
-
 let db, DOC, NOTES_DOC;
 let suppressListener = false;
-
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
   DOC = db.collection('dashboard').doc('state');
   NOTES_DOC = db.collection('dashboard').doc('notes');
-} catch(e) {
-  console.warn('Firebase init failed:', e);
-}
+} catch(e) { console.warn('Firebase init failed:', e); }
+
+window.showSyncDot = function(ok) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-lbl');
+  if (!dot || !lbl) return;
+  dot.style.background = ok ? '#00D4A8' : '#E05050';
+  lbl.textContent = ok ? 'Synced' : 'Offline';
+  setTimeout(() => { dot.style.background = '#C4C2D8'; lbl.textContent = 'Live'; }, 2000);
+};
 
 window.saveToFirebase = function() {
   if (!DOC) return;
@@ -173,81 +178,76 @@ window.saveToFirebase = function() {
       done: item.querySelector('.checkbox').classList.contains('done'),
       prio: ps ? ps.value : 'later',
       owners: ownerMap[id] || [],
-      comment: localStorage.getItem('vox-comment-' + id) || ''
+      comment: (document.getElementById('comment-' + id) || {}).value || ''
     };
   });
   state['xCustomx'] = JSON.stringify(customTasks || {});
   state['xOwnerMapx'] = JSON.stringify(ownerMap || {});
-  DOC.set(state).then(() => {
-    window.showSyncDot(true);
-  }).catch(e => console.warn('Firebase save error', e));
+  DOC.set(state)
+    .then(() => window.showSyncDot(true))
+    .catch(e => console.warn('Save error:', e));
   setTimeout(() => suppressListener = false, 1500);
 };
 
 window.saveNotesToFirebase = function(tab, val) {
   if (!NOTES_DOC) return;
-  const update = {};
-  update[tab] = val;
-  NOTES_DOC.set(update, { merge: true }).catch(e => console.warn('Notes save error', e));
-};
-
-window.showSyncDot = function(ok) {
-  const dot = document.getElementById('sync-dot');
-  const lbl = document.getElementById('sync-lbl');
-  if (!dot || !lbl) return;
-  dot.style.background = ok ? '#00D4A8' : '#E05050';
-  lbl.textContent = ok ? 'Synced' : 'Offline';
-  setTimeout(() => { dot.style.background = '#C4C2D8'; lbl.textContent = 'Live'; }, 2000);
+  const u = {}; u[tab] = val;
+  NOTES_DOC.set(u, { merge: true }).catch(e => console.warn('Notes error:', e));
 };
 
 window.startFirebaseListeners = function() {
   if (!DOC) return;
-  let initialLoadDone = false;
+  let firstLoad = true;
 
   DOC.onSnapshot(snap => {
     if (suppressListener) return;
 
     if (!snap.exists) {
-      // No data in Firebase yet — just render defaults as-is
-      initialLoadDone = true;
-      updateAll();
-      refreshDoneGroups();
-      refreshFocusTab();
+      firstLoad = false;
+      document.querySelectorAll('.item[data-id]').forEach(item => {
+        const id = item.dataset.id;
+        if (!ownerMap[id]) ownerMap[id] = [];
+        renderOwnerChips(id);
+      });
+      updateAll(); refreshDoneGroups(); refreshFocusTab();
       return;
     }
 
     const state = snap.data();
     if (!state) return;
 
-    // ALWAYS clear and re-add custom tasks to avoid duplicates
-    document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
-    Object.keys(customTasks).forEach(k => delete customTasks[k]);
-
-    if (state['xCustomx']) {
-      try {
-        const ct = JSON.parse(state['xCustomx']);
-        Object.keys(ct).forEach(groupId => {
-          const container = document.getElementById('items-' + groupId);
-          if (!container) return;
-          const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
-          (ct[groupId] || []).forEach(item => {
-            container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
-            if (!customTasks[groupId]) customTasks[groupId] = [];
-            customTasks[groupId].push(item);
+    // On first load only: add custom tasks from Firebase
+    if (firstLoad) {
+      firstLoad = false;
+      // Clear any custom tasks in DOM
+      document.querySelectorAll('.item[data-id^="c"]').forEach(el => el.remove());
+      Object.keys(customTasks).forEach(k => delete customTasks[k]);
+      // Re-add from Firebase
+      if (state['xCustomx']) {
+        try {
+          const ct = JSON.parse(state['xCustomx']);
+          Object.keys(ct).forEach(groupId => {
+            const container = document.getElementById('items-' + groupId);
+            if (!container) return;
+            const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
+            (ct[groupId] || []).forEach(item => {
+              container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
+              if (!customTasks[groupId]) customTasks[groupId] = [];
+              customTasks[groupId].push(item);
+            });
           });
-        });
-      } catch(e) {}
+        } catch(e) { console.warn('Custom tasks error:', e); }
+      }
+      // Restore owner map
+      if (state['xOwnerMapx']) {
+        try {
+          const om = JSON.parse(state['xOwnerMapx']);
+          Object.keys(om).forEach(id => { ownerMap[id] = om[id]; });
+        } catch(e) {}
+      }
     }
 
-    // Restore owner map
-    if (state['xOwnerMapx']) {
-      try {
-        const om = JSON.parse(state['xOwnerMapx']);
-        Object.keys(om).forEach(id => { ownerMap[id] = om[id]; });
-      } catch(e) {}
-    }
-
-    // Update state for all items
+    // Every sync: update task state only (no structural changes)
     Object.keys(state).forEach(id => {
       if (id === 'xCustomx' || id === 'xOwnerMapx') return;
       const item = document.querySelector('[data-id="' + id + '"]');
@@ -255,12 +255,10 @@ window.startFirebaseListeners = function() {
       const s = state[id];
       const cb = item.querySelector('.checkbox');
       const title = item.querySelector('.item-title');
-
       if (s.done !== undefined) {
         if (s.done && !cb.classList.contains('done')) { cb.classList.add('done'); title.classList.add('done'); }
         if (!s.done && cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
       }
-
       if (s.prio) {
         const ps = item.querySelector('[data-role="prio"]');
         if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
@@ -268,18 +266,12 @@ window.startFirebaseListeners = function() {
         const tag = document.getElementById('prio-tag-' + id);
         if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
       }
-
-      if (s.owners) {
-        ownerMap[id] = s.owners;
-        renderOwnerChips(id);
-      }
-
-      if (s.comment !== undefined) {
+      if (s.owners) { ownerMap[id] = s.owners; renderOwnerChips(id); }
+      if (s.comment) {
         const box = document.getElementById('comment-' + id);
         const lbl = document.getElementById('comment-lbl-' + id);
-        if (box && s.comment && box.value !== s.comment) {
+        if (box && box.value !== s.comment) {
           box.value = s.comment;
-          localStorage.setItem('vox-comment-' + id, s.comment);
           if (s.comment.trim()) {
             box.style.display = 'block';
             if (lbl) lbl.textContent = 'Hide note';
@@ -289,17 +281,14 @@ window.startFirebaseListeners = function() {
       }
     });
 
-    // Render owner chips for all items
+    // Render all owner chips
     document.querySelectorAll('.item[data-id]').forEach(item => {
       const id = item.dataset.id;
-      if(!ownerMap[id]) ownerMap[id] = [];
+      if (!ownerMap[id]) ownerMap[id] = [];
       renderOwnerChips(id);
     });
 
-    initialLoadDone = true;
-    updateAll();
-    refreshDoneGroups();
-    refreshFocusTab();
+    updateAll(); refreshDoneGroups(); refreshFocusTab();
   });
 
   NOTES_DOC.onSnapshot(snap => {
@@ -323,7 +312,13 @@ window.startFirebaseListeners = function() {
       <span id="sync-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C4C2D8;transition:background .3s"></span>
       <span id="sync-lbl">Live</span>
     </div>
+    <div style="display:flex;align-items:center;gap:12px">
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#8A8AA8">
+      <span id="sync-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C4C2D8;transition:background .3s"></span>
+      <span id="sync-lbl">Live</span>
+    </div>
     <div class="header-right">Launch Dashboard &nbsp;·&nbsp; March 2026</div>
+  </div>
   </div>
 </header>
 <div class="overview">
@@ -986,9 +981,8 @@ function saveComment(id){
   commentTimers[id]=setTimeout(()=>{
     const el=document.getElementById('comment-'+id);
     if(el){
-      localStorage.setItem('vox-comment-'+id,el.value);
       updateNoteDot(id,el.value.trim().length>0);
-      if(window.saveToFirebase)window.saveToFirebase();
+      if(window.saveToFirebase) window.saveToFirebase();
     }
   },600);
 }
@@ -1007,27 +1001,110 @@ function updateNoteDot(id,hasContent){
 }
 
 function saveState(){
-  if(window.saveToFirebase){ window.saveToFirebase(); window.showSyncDot&&window.showSyncDot(true); }
+  if(window.saveToFirebase) window.saveToFirebase();
+}
+
+function loadState(){
+  // Local storage fallback (Firebase listener will override)
+  const savedCustom=localStorage.getItem('vox-custom');
+  if(savedCustom){
+    const ct=JSON.parse(savedCustom);
+    Object.keys(ct).forEach(groupId=>{
+      const container=document.getElementById('items-'+groupId);
+      if(!container)return;
+      const tab=container.closest('.panel')?.id?.replace('panel-','');
+      ct[groupId].forEach(item=>{
+        container.insertAdjacentHTML('beforeend',makeItemHTML(item,tab||''));
+        if(!customTasks[groupId])customTasks[groupId]=[];
+        customTasks[groupId].push(item);
+      });
+    });
+  }
+  // Restore state
+  const raw=localStorage.getItem('vox-state-v5');
+  if(raw){
+    const state=JSON.parse(raw);
+    Object.keys(state).forEach(id=>{
+      const item=document.querySelector(`[data-id="${id}"]`);
+      if(!item)return;
+      const s=state[id];
+      if(s.done){item.querySelector('.checkbox').classList.add('done');item.querySelector('.item-title').classList.add('done');}
+      if(s.prio){
+        const ps=item.querySelector('[data-role="prio"]');
+        if(ps){ps.value=s.prio;ps.className='ctrl prio-'+s.prio;}
+        item.dataset.prio=s.prio;
+        const tag=document.getElementById('prio-tag-'+id);
+        if(tag){tag.className='tag tag-'+s.prio;tag.textContent=PRIO_LABELS[s.prio];}
+      }
+      if(s.owner!==null&&s.owner!==undefined){
+        const os=item.querySelector('[data-role="owner"]');
+        if(os){os.value=s.owner;os.className='ctrl '+(s.owner?'owner-sel':'owner-none');}
+        item.dataset.owner=s.owner;
+        const tag=document.getElementById('owner-tag-'+id);
+        if(tag){tag.textContent=s.owner;tag.style.display=s.owner?'':'none';}
+      }
+    });
+  }
+  // Restore owner map
+  const savedOwners=localStorage.getItem('vox-owners');
+  if(savedOwners){
+    const om=JSON.parse(savedOwners);
+    Object.keys(om).forEach(id=>{ownerMap[id]=om[id];});
+  }
+  // Render owner chips for all items (using saved or default)
+  document.querySelectorAll('.item[data-id]').forEach(item=>{
+    const id=item.dataset.id;
+    if(!ownerMap[id]){
+      // init from data-owner default
+      const def=item.dataset.owner;
+      ownerMap[id]=def?[def]:[];
+    }
+    renderOwnerChips(id);
+  });
+  // Tab notes
+  [...Object.keys(TASKS),'investors','b2b'].forEach(tab=>{
+    const key=TASKS[tab]?.noteId||('notes-'+tab);
+    const el=document.getElementById(key);
+    const saved=localStorage.getItem('vox-tabnote-'+tab);
+    if(el&&saved)el.value=saved;
+  });
+  // Comments
+  document.querySelectorAll('.item[data-id]').forEach(item=>{
+    const id=item.dataset.id;
+    const saved=localStorage.getItem('vox-comment-'+id);
+    const box=document.getElementById('comment-'+id);
+    const lbl=document.getElementById('comment-lbl-'+id);
+    if(saved&&saved.trim()){
+      if(box){box.value=saved;}
+      if(lbl)lbl.textContent='Add note';
+      updateNoteDot(id,true);
+    }
+    if(box){
+      box.addEventListener('blur',()=>{
+        if(!box.value.trim()){
+          box.style.display='none';
+          if(lbl)lbl.textContent='Add note';
+          localStorage.removeItem('vox-comment-'+id);
+        }
+      });
+    }
+  });
+  // Handle Enter key on form title inputs
+  document.querySelectorAll('[id^="form-title-"]').forEach(input=>{
+    const groupId=input.id.replace('form-title-','');
+    const panel=input.closest('.panel');
+    const tab=panel?.id?.replace('panel-','')||'';
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')addTask(groupId,tab);});
+  });
 }
 
 buildTasks();
-
-// Clear all stale localStorage data — Firebase is source of truth
-Object.keys(localStorage).forEach(k => {
-  if(k.startsWith('vox-')) localStorage.removeItem(k);
-});
-
-// Reset all items to undone — Firebase will set real state
-document.querySelectorAll('.item[data-id]').forEach(item => {
-  item.querySelector('.checkbox').classList.remove('done');
-  item.querySelector('.item-title').classList.remove('done');
-});
-
+loadState();
 updateAll();
 applyFilters();
 refreshDoneGroups();
 refreshFocusTab();
-// Firebase is the single source of truth
+// Start Firebase real-time sync after DOM is built
 try { if (window.startFirebaseListeners) window.startFirebaseListeners(); } catch(e) { console.warn('Firebase sync unavailable'); }
 
 // Close open comment boxes when clicking outside
