@@ -138,142 +138,11 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 ::-webkit-scrollbar-thumb{background:#E2E0F0;border-radius:2px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyDLw64yc5Re9_2kt2JLqKjZ2ukEd7Cajl4",
-  authDomain: "voxspan-to-do-dashboard.firebaseapp.com",
-  projectId: "voxspan-to-do-dashboard",
-  storageBucket: "voxspan-to-do-dashboard.firebasestorage.app",
-  messagingSenderId: "630457670269",
-  appId: "1:630457670269:web:02f8da305a84c656e32f14"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const DOC = db.collection('dashboard').doc('state');
-const NOTES_DOC = db.collection('dashboard').doc('notes');
-let suppressListener = false;
-
-window.saveToFirebase = function() {
-  suppressListener = true;
-  const state = {};
-  document.querySelectorAll('.item[data-id]').forEach(item => {
-    const id = item.dataset.id;
-    const ps = item.querySelector('[data-role="prio"]');
-    state[id] = {
-      done: item.querySelector('.checkbox').classList.contains('done'),
-      prio: ps ? ps.value : 'later',
-      owners: (window.ownerMap && window.ownerMap[id]) || [],
-      comment: localStorage.getItem('vox-comment-' + id) || ''
-    };
-  });
-  state['__custom__'] = JSON.stringify(window.customTasks || {});
-  state['__ownerMap__'] = JSON.stringify(window.ownerMap || {});
-  DOC.set(state).catch(e => console.warn('Firebase save error', e));
-  setTimeout(() => suppressListener = false, 1500);
-};
-
-window.saveNotesToFirebase = function(tab, val) {
-  const update = {};
-  update[tab] = val;
-  NOTES_DOC.set(update, { merge: true }).catch(e => console.warn('Notes save error', e));
-};
-
-window.showSyncDot = function(ok) {
-  const dot = document.getElementById('sync-dot');
-  const lbl = document.getElementById('sync-lbl');
-  if (!dot || !lbl) return;
-  dot.style.background = ok ? '#00D4A8' : '#E05050';
-  lbl.textContent = ok ? 'Synced' : 'Offline';
-  setTimeout(() => { dot.style.background = '#C4C2D8'; lbl.textContent = 'Live'; }, 2000);
-};
-
-// Start listeners after DOM is ready
-window.startFirebaseListeners = function() {
-  DOC.onSnapshot(snap => {
-    if (suppressListener || !snap.exists) return;
-    const state = snap.data();
-    if (!state) return;
-
-    if (state['__custom__']) {
-      try {
-        const ct = JSON.parse(state['__custom__']);
-        Object.keys(ct).forEach(groupId => {
-          const container = document.getElementById('items-' + groupId);
-          if (!container) return;
-          const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
-          (ct[groupId] || []).forEach(item => {
-            if (!document.querySelector('[data-id="' + item.id + '"]')) {
-              container.insertAdjacentHTML('beforeend', window.makeItemHTML(item, tab));
-              if (!window.customTasks[groupId]) window.customTasks[groupId] = [];
-              window.customTasks[groupId].push(item);
-            }
-          });
-        });
-      } catch(e) {}
-    }
-
-    if (state['__ownerMap__']) {
-      try {
-        const om = JSON.parse(state['__ownerMap__']);
-        Object.keys(om).forEach(id => { if (window.ownerMap) window.ownerMap[id] = om[id]; });
-      } catch(e) {}
-    }
-
-    Object.keys(state).forEach(id => {
-      if (id.startsWith('__')) return;
-      const item = document.querySelector('[data-id="' + id + '"]');
-      if (!item) return;
-      const s = state[id];
-      const cb = item.querySelector('.checkbox');
-      const title = item.querySelector('.item-title');
-      if (s.done !== undefined) {
-        if (s.done && !cb.classList.contains('done')) { cb.classList.add('done'); title.classList.add('done'); }
-        if (!s.done && cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
-      }
-      if (s.prio) {
-        const ps = item.querySelector('[data-role="prio"]');
-        if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
-        item.dataset.prio = s.prio;
-        const tag = document.getElementById('prio-tag-' + id);
-        if (tag && window.PRIO_LABELS) { tag.className = 'tag tag-' + s.prio; tag.textContent = window.PRIO_LABELS[s.prio]; }
-      }
-      if (s.owners && window.ownerMap) {
-        window.ownerMap[id] = s.owners;
-        if (window.renderOwnerChips) window.renderOwnerChips(id);
-      }
-      if (s.comment) {
-        const box = document.getElementById('comment-' + id);
-        const lbl = document.getElementById('comment-lbl-' + id);
-        if (box && box.value !== s.comment) {
-          box.value = s.comment;
-          localStorage.setItem('vox-comment-' + id, s.comment);
-          if (s.comment.trim()) {
-            box.style.display = 'block';
-            if (lbl) lbl.textContent = 'Hide note';
-            if (window.updateNoteDot) window.updateNoteDot(id, true);
-          }
-        }
-      }
-    });
-
-    if (window.updateAll) window.updateAll();
-    if (window.refreshDoneGroups) window.refreshDoneGroups();
-    if (window.refreshFocusTab) window.refreshFocusTab();
-  });
-
-  NOTES_DOC.onSnapshot(snap => {
-    if (!snap.exists) return;
-    const notes = snap.data();
-    if (!notes) return;
-    Object.keys(notes).forEach(tab => {
-      const key = (window.TASKS && window.TASKS[tab] && window.TASKS[tab].noteId) || ('notes-' + tab);
-      const el = document.getElementById(key);
-      if (el && el.value !== notes[tab]) el.value = notes[tab];
-    });
-  });
-};
+window.saveToFirebase = function(){};
+window.saveNotesToFirebase = function(){};
+window.showSyncDot = function(){};
+window.startFirebaseListeners = function(){};
 </script>
 </head>
 <body>
@@ -1082,7 +951,7 @@ applyFilters();
 refreshDoneGroups();
 refreshFocusTab();
 // Start Firebase real-time sync after DOM is built
-if (window.startFirebaseListeners) window.startFirebaseListeners();
+try { if (window.startFirebaseListeners) window.startFirebaseListeners(); } catch(e) { console.warn('Firebase sync unavailable'); }
 
 // Close open comment boxes when clicking outside
 document.addEventListener('click', function(e) {
