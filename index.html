@@ -705,7 +705,7 @@ function refreshFocusTab(){
   panel.innerHTML=html;
 }
 
-function uid(){return 'c'+(idCounter++);}
+function uid(){return 'c'+Date.now()+''+Math.floor(Math.random()*9999);}
 
 function makeItemHTML(item,tab){
   const isDone=item.done||false;
