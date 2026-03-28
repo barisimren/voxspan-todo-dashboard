@@ -940,6 +940,12 @@ function toggleItem(id){
   saveState();updateAll();
   refreshDoneGroups();
   refreshFocusTab();
+  // Debug: log done items in all containers
+  document.querySelectorAll('[id^="items-"]').forEach(c => {
+    const done = c.querySelectorAll('.checkbox.done').length;
+    const total = c.querySelectorAll('.item').length;
+    if(total > 0) console.log(c.id, 'done:', done, '/', total, 'hidden:', [...c.querySelectorAll('.item')].filter(i=>i.style.display==='none').length);
+  });
 }
 
 function setPrio(id,sel){
