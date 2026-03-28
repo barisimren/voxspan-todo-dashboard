@@ -225,7 +225,7 @@ window.startFirebaseListeners = function() {
 
     Object.keys(state).forEach(id => {
       const item = document.querySelector('[data-id="' + id + '"]');
-      if (!item) return;
+      if (!item) { if(id.startsWith('c')) console.log('Custom task not in DOM yet:', id); return; }
       const s = state[id];
       const cb    = item.querySelector('.checkbox');
       const title = item.querySelector('.item-title');
