@@ -136,7 +136,15 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 .panel.active{display:block}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:#E2E0F0;border-radius:2px}
-</style>
+.tab.add-tab-btn{color:#8A8AA8;border:1.5px dashed #C4C2D8;border-radius:20px;padding:4px 12px;background:none;cursor:pointer;font-size:13px;}
+.tab.add-tab-btn:hover{color:#5B3FD0;border-color:#5B3FD0;background:#F2EFFE;}
+.add-tab-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:999;}
+.add-tab-overlay.open{display:block;}
+.add-tab-form{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:28px 24px;box-shadow:0 8px 40px rgba(91,63,208,.2);z-index:1000;min-width:340px;gap:14px;flex-direction:column;}
+.add-tab-form.open{display:flex;}
+.add-tab-form h3{font-size:16px;font-weight:700;color:#1E2D7A;margin:0 0 4px;}
+.add-tab-form input{padding:9px 12px;border:1px solid #E2E0F0;border-radius:7px;font-size:13px;font-family:inherit;color:#1E2D7A;outline:none;}
+.add-tab-form input:focus{border-color:#5B3FD0;}</style>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
