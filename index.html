@@ -584,6 +584,8 @@ function removeOwner(id,owner){
   applyFilters();
 }
 
+function getDone(container){return [...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done'));}
+
 function refreshDoneGroups(){
   TASK_TABS.forEach(tab=>{
     const data=TASKS[tab];
@@ -591,12 +593,22 @@ function refreshDoneGroups(){
     data.groups.forEach(g=>{
       const container=document.getElementById('items-'+g.id);
       if(!container)return;
-      const doneItems=[...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done'));
-      const undoneItems=[...container.querySelectorAll('.item')].filter(i=>!i.querySelector('.checkbox.done'));
+      const doneItems=getDone(container);
       let toggle=container.parentElement.querySelector('.done-toggle');
-      if(doneItems.length===0){if(toggle)toggle.remove();return;}
+      if(doneItems.length===0){
+        if(toggle)toggle.remove();
+        container.querySelectorAll('.item').forEach(i=>i.style.display='');
+        return;
+      }
       const collapsed=toggle?toggle.dataset.collapsed==='true':true;
-      doneItems.forEach(i=>i.style.display=collapsed?'none':'');
+      // Re-query ALL items and set visibility
+      container.querySelectorAll('.item').forEach(i=>{
+        i.style.display=(i.querySelector('.checkbox.done')&&collapsed)?'none':'';
+      });
+      const count=getDone(container).length;
+      const label=collapsed
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${count})`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${count})`;
       if(!toggle){
         toggle=document.createElement('button');
         toggle.className='done-toggle';
@@ -605,15 +617,16 @@ function refreshDoneGroups(){
         toggle.addEventListener('click',()=>{
           const c=toggle.dataset.collapsed==='true';
           toggle.dataset.collapsed=(!c).toString();
-          doneItems.forEach(i=>i.style.display=c?'':'none');
-          toggle.innerHTML=c
-            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`
-            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`;
+          container.querySelectorAll('.item').forEach(i=>{
+            i.style.display=(i.querySelector('.checkbox.done')&&!c)?'none':'';  
+          });
+          const n=getDone(container).length;
+          toggle.innerHTML=!c
+            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${n})`
+            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${n})`;
         });
       }
-      toggle.innerHTML=collapsed
-        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`
-        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`;
+      toggle.innerHTML=label;
     });
   });
 }
@@ -672,7 +685,7 @@ function refreshFocusTab(){
   panel.innerHTML=html;
 }
 
-function uid(){return 'c'+(idCounter++);}
+function uid(){return 'c'+Date.now()+Math.floor(Math.random()*10000);}
 
 function makeItemHTML(item,tab){
   const isDone=item.done||false;
@@ -979,8 +992,7 @@ function saveTabNote(tab){
     const key=TASKS[tab]?.noteId||('notes-'+tab);
     const el=document.getElementById(key);
     if(el){
-      localStorage.setItem('vox-tabnote-'+tab,el.value);
-      if(window.saveNotesToFirebase)window.saveNotesToFirebase(tab,el.value);
+      if(window.saveToFirebase)window.saveToFirebase();
     }
     const s=document.getElementById('saved-'+tab);
     if(s){s.classList.add('show');setTimeout(()=>s.classList.remove('show'),1500);}
@@ -991,7 +1003,6 @@ function saveComment(id){
   commentTimers[id]=setTimeout(()=>{
     const el=document.getElementById('comment-'+id);
     if(el){
-      localStorage.setItem('vox-comment-'+id,el.value);
       updateNoteDot(id,el.value.trim().length>0);
       if(window.saveToFirebase)window.saveToFirebase();
     }
@@ -1022,13 +1033,7 @@ function initUI(){
     if (!ownerMap[id]) { const def = item.dataset.owner; ownerMap[id] = def ? [def] : []; }
     renderOwnerChips(id);
   });
-  // Restore tab notes from localStorage
-  [...Object.keys(TASKS),'investors','b2b'].forEach(tab=>{
-    const key=TASKS[tab]?.noteId||('notes-'+tab);
-    const el=document.getElementById(key);
-    const saved=localStorage.getItem('vox-tabnote-'+tab);
-    if(el&&saved)el.value=saved;
-  });
+  // Tab notes restored by Firebase snapshot
   // Comment blur handlers + Enter key
   document.querySelectorAll('.item[data-id]').forEach(item=>{
     const id=item.dataset.id;
