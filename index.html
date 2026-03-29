@@ -204,13 +204,39 @@ function collectState() {
     if (el && el.value) notes[tab] = el.value;
   });
 
-  return { tasks, notes };
+  // Save item order per container
+  const order = {};
+  document.querySelectorAll('[id^="items-"]').forEach(container => {
+    const ids = [...container.querySelectorAll('.item[data-id]')].map(i => i.dataset.id);
+    if (ids.length) order[container.id.replace('items-', '')] = ids;
+  });
+
+  return { tasks, notes, customGroups, customTabs, order };
 }
 
 // Apply state from Firebase onto DOM
 function applySnapshot(data) {
   if (!data) return;
-  const { tasks, notes } = data;
+  const { tasks, notes, order } = data;
+
+  // Restore custom tabs
+  if (data.customTabs) {
+    Object.keys(data.customTabs).forEach(tabId => {
+      if (document.getElementById('panel-' + tabId)) return; // already exists
+      customTabs[tabId] = data.customTabs[tabId];
+      renderTab(tabId, data.customTabs[tabId], '');
+    });
+  }
+
+  // Restore custom groups
+  if (data.customGroups) {
+    Object.keys(data.customGroups).forEach(groupId => {
+      if (document.getElementById('group-' + groupId)) return; // already exists
+      const g = data.customGroups[groupId];
+      customGroups[groupId] = g;
+      renderGroup(groupId, g.label, g.tab);
+    });
+  }
 
   if (tasks) {
     // Step 1: add custom tasks missing from DOM
@@ -284,6 +310,22 @@ function applySnapshot(data) {
       if (el && el.value !== notes[tab]) el.value = notes[tab];
     });
   }
+
+  // Restore item order
+  if (order) {
+    Object.keys(order).forEach(groupId => {
+      const container = document.getElementById('items-' + groupId);
+      if (!container) return;
+      const ids = order[groupId];
+      ids.forEach(id => {
+        const item = container.querySelector('[data-id="' + id + '"]');
+        if (item) container.appendChild(item);
+      });
+    });
+  }
+
+  // Init drag & drop on all containers
+  document.querySelectorAll('[id^="items-"]').forEach(c => initDragDrop(c));
 
   updateAll();
   refreshDoneGroups();
@@ -372,6 +414,7 @@ window.startFirebaseListeners = function() {
   <div class="tab" onclick="showTab('b2b',this)">B2B Pipeline</div>
   <div class="tab" onclick="showTab('90days',this)">90-Day Plan <span class="tab-badge" id="badge-90days"></span></div>
   <div class="tab" onclick="showTab('focus',this)">⚡ Today's Focus <span class="tab-badge" id="badge-focus"></span></div>
+  <div class="tab add-tab-btn" id="add-tab-btn" onclick="openAddTabForm()" title="Add new tab">+ Tab</div>
 </div>
 <main id="main-content">
   <div class="no-results" id="no-results">No tasks match your filters.</div>
@@ -528,6 +571,8 @@ const TASKS={
 };
 
 let customTasks={};
+let customGroups={}; // groupId -> { label, tab }
+let customTabs={};   // tabId -> label
 let idCounter=1000;
 let ownerMap={};  // id -> [owner1, owner2, ...]
 
@@ -694,12 +739,15 @@ function uid(){return 'c'+Date.now()+Math.floor(Math.random()*10000);}
 function makeItemHTML(item,tab){
   const isDone=item.done||false;
   const wipTag=item.wip?`<span class="tag tag-wip">In progress</span>`:'';
-  return `<div class="item" data-tab="${tab}" data-id="${item.id}" data-prio="${item.prio||'later'}" data-owner="${item.owner||''}">
+  return `<div class="item" data-tab="${tab}" data-id="${item.id}" data-prio="${item.prio||'later'}" data-owner="${item.owner||''}" draggable="true">
     <div class="item-main">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
       <div class="checkbox${isDone?' done':''}" onclick="toggleItem('${item.id}')"></div>
-      <div class="text-block" onclick="toggleItem('${item.id}')">
-        <div class="item-title${isDone?' done':''}">${escHtml(item.title)}</div>
-        ${item.note?`<div class="item-note-text">${escHtml(item.note)}</div>`:''}
+      <div class="text-block">
+        <div class="item-title${isDone?' done':''}" contenteditable="false" onblur="saveItemTitle('${item.id}',this)" onclick="startEditTitle(event,'${item.id}',this)">${escHtml(item.title)}</div>
+        ${item.note?`<div class="item-note-text" id="note-text-${item.id}">${escHtml(item.note)}</div>`:`<div class="item-note-text" id="note-text-${item.id}" style="display:none"></div>`}
+        <button class="edit-note-btn" onclick="event.stopPropagation();toggleNoteEdit('${item.id}')">Edit note</button>
+        <input class="note-edit-input" id="note-input-${item.id}" style="display:none" placeholder="Add a note…" value="${escHtml(item.note||'')}" onblur="saveItemNote('${item.id}',this)" onkeydown="if(event.key==='Enter')this.blur()">
         <div class="item-tags" id="tags-${item.id}">
           <span class="tag tag-${item.prio||'later'}" id="prio-tag-${item.id}">${PRIO_LABELS[item.prio||'later']}</span>
           <div class="owner-multi" id="owner-multi-${item.id}" style="display:inline-flex;gap:4px;flex-wrap:wrap"></div>
@@ -710,8 +758,7 @@ function makeItemHTML(item,tab){
         <select class="ctrl prio-${item.prio||'later'}" data-role="prio" data-id="${item.id}" onchange="setPrio('${item.id}',this)">
           ${PRIOS.map(p=>`<option value="${p.v}"${p.v===(item.prio||'later')?' selected':''}>${p.l}</option>`).join('')}
         </select>
-
-        ${item.custom?`<button class="delete-btn" onclick="deleteTask('${item.id}','${tab}')" title="Delete task">×</button>`:''}
+        <button class="delete-btn" onclick="deleteTask('${item.id}','${tab}')" title="Delete task">×</button>
       </div>
     </div>
     <div class="item-comment-wrap" onclick="event.stopPropagation()">
@@ -752,6 +799,216 @@ function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Edit title ───────────────────────────────────────────────────────────────
+function startEditTitle(e, id, el) {
+  e.stopPropagation();
+  el.contentEditable = 'true';
+  el.focus();
+  // Move cursor to end
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function saveItemTitle(id, el) {
+  el.contentEditable = 'false';
+  const newTitle = el.textContent.trim();
+  if (!newTitle) { el.textContent = el.dataset.orig || 'Untitled'; }
+  // Update customTasks if custom
+  Object.keys(customTasks).forEach(g => {
+    const t = (customTasks[g] || []).find(t => t.id === id);
+    if (t) t.title = newTitle;
+  });
+  saveState();
+}
+
+// ── Edit note ─────────────────────────────────────────────────────────────────
+function toggleNoteEdit(id) {
+  const noteText = document.getElementById('note-text-' + id);
+  const noteInput = document.getElementById('note-input-' + id);
+  if (!noteInput) return;
+  const isOpen = noteInput.style.display === 'block';
+  if (isOpen) {
+    noteInput.style.display = 'none';
+    if (noteText) { noteText.style.display = noteInput.value.trim() ? '' : 'none'; }
+  } else {
+    noteInput.style.display = 'block';
+    noteInput.focus();
+    if (noteText) noteText.style.display = 'none';
+  }
+}
+
+function saveItemNote(id, el) {
+  el.style.display = 'none';
+  const val = el.value.trim();
+  const noteText = document.getElementById('note-text-' + id);
+  if (noteText) { noteText.textContent = val; noteText.style.display = val ? '' : 'none'; }
+  Object.keys(customTasks).forEach(g => {
+    const t = (customTasks[g] || []).find(t => t.id === id);
+    if (t) t.note = val;
+  });
+  saveState();
+}
+
+// ── Drag & drop reorder ───────────────────────────────────────────────────────
+let dragSrc = null;
+
+function initDragDrop(container) {
+  container.querySelectorAll('.item[draggable]').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragSrc = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      container.querySelectorAll('.item').forEach(i => i.classList.remove('drag-over'));
+      dragSrc = null;
+      saveState();
+      updateAll();
+      refreshDoneGroups();
+      refreshFocusTab();
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === item) return;
+      // Only allow within same container
+      if (!container.contains(dragSrc)) return;
+      container.querySelectorAll('.item').forEach(i => i.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+      const rect = item.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      if (e.clientY < mid) {
+        container.insertBefore(dragSrc, item);
+      } else {
+        container.insertBefore(dragSrc, item.nextSibling);
+      }
+    });
+    item.addEventListener('drop', e => { e.preventDefault(); });
+  });
+}
+
+// ── New segment ───────────────────────────────────────────────────────────────
+let customGroups = {}; // groupId -> { label, tab }
+
+function openAddGroupForm(tab) {
+  const form = document.getElementById('add-group-form-' + tab);
+  if (!form) return;
+  form.classList.toggle('open');
+  if (form.classList.contains('open')) {
+    setTimeout(() => { const i = document.getElementById('new-group-input-' + tab); if (i) i.focus(); }, 50);
+  }
+}
+
+function addGroup(tab) {
+  const input = document.getElementById('new-group-input-' + tab);
+  const label = input ? input.value.trim() : '';
+  if (!label) { if (input) input.focus(); return; }
+  const groupId = tab + '-cg-' + Date.now();
+  customGroups[groupId] = { label, tab };
+  renderGroup(groupId, label, tab);
+  if (input) input.value = '';
+  document.getElementById('add-group-form-' + tab).classList.remove('open');
+  saveState();
+  updateAll();
+}
+
+function renderGroup(groupId, label, tab) {
+  const panel = document.getElementById('panel-' + tab);
+  if (!panel) return;
+  const addBtn = document.getElementById('add-group-btn-' + tab);
+  const groupDiv = document.createElement('div');
+  groupDiv.className = 'group';
+  groupDiv.id = 'group-' + groupId;
+  groupDiv.innerHTML =
+    `<div class="group-label" contenteditable="true" onblur="saveGroupLabel('${groupId}',this)">${escHtml(label)}</div>` +
+    `<div class="items-container" id="items-${groupId}"></div>` +
+    makeAddForm(groupId, tab);
+  panel.insertBefore(groupDiv, addBtn || null);
+  // Wire Enter key
+  const inp = document.getElementById('form-title-' + groupId);
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(groupId, tab); });
+}
+
+function saveGroupLabel(groupId, el) {
+  const val = el.textContent.trim();
+  if (!val) { el.textContent = customGroups[groupId]?.label || 'New segment'; return; }
+  if (customGroups[groupId]) customGroups[groupId].label = val;
+  saveState();
+}
+
+// ── New tab ───────────────────────────────────────────────────────────────────
+let customTabs = {}; // tabId -> label
+
+function openAddTabForm() {
+  document.getElementById('add-tab-overlay').classList.add('open');
+  document.getElementById('add-tab-form').classList.add('open');
+  setTimeout(() => document.getElementById('new-tab-input').focus(), 50);
+}
+
+function closeAddTabForm() {
+  document.getElementById('add-tab-overlay').classList.remove('open');
+  document.getElementById('add-tab-form').classList.remove('open');
+  document.getElementById('new-tab-input').value = '';
+  document.getElementById('new-tab-seg-input').value = '';
+}
+
+function addTab() {
+  const labelInput = document.getElementById('new-tab-input');
+  const segInput = document.getElementById('new-tab-seg-input');
+  const label = labelInput.value.trim();
+  const segLabel = segInput.value.trim() || 'Tasks';
+  if (!label) { labelInput.focus(); return; }
+  const tabId = 'ct-' + Date.now();
+  customTabs[tabId] = label;
+  renderTab(tabId, label, segLabel);
+  closeAddTabForm();
+  saveState();
+  updateAll();
+}
+
+function renderTab(tabId, label, firstSegLabel) {
+  // Add tab button
+  const tabBar = document.querySelector('.tab-bar');
+  const addTabBtn = document.getElementById('add-tab-btn');
+  const tabEl = document.createElement('div');
+  tabEl.className = 'tab';
+  tabEl.id = 'tab-' + tabId;
+  tabEl.setAttribute('onclick', `showTab('${tabId}',this)`);
+  tabEl.textContent = label;
+  tabBar.insertBefore(tabEl, addTabBtn);
+
+  // Add panel
+  const main = document.getElementById('main-content');
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'panel-' + tabId;
+
+  // First segment
+  const segId = tabId + '-g0';
+  customGroups[segId] = { label: firstSegLabel, tab: tabId };
+  panel.innerHTML =
+    `<div class="section-prog"><div class="sec-bar"><div class="sec-bar-fill" id="bar-${tabId}"></div></div><div class="sec-pct" id="pct-${tabId}">0%</div></div>` +
+    `<div class="group" id="group-${segId}">` +
+    `<div class="group-label" contenteditable="true" onblur="saveGroupLabel('${segId}',this)">${escHtml(firstSegLabel)}</div>` +
+    `<div class="items-container" id="items-${segId}"></div>` +
+    makeAddForm(segId, tabId) +
+    `</div>` +
+    `<button class="add-group-btn" id="add-group-btn-${tabId}" onclick="openAddGroupForm('${tabId}')">` +
+    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add segment</button>` +
+    `<div class="add-group-form" id="add-group-form-${tabId}">` +
+    `<input id="new-group-input-${tabId}" placeholder="Segment name…" onkeydown="if(event.key==='Enter')addGroup('${tabId}')">` +
+    `<div class="add-group-form-actions"><button class="btn-cancel" onclick="openAddGroupForm('${tabId}')">Cancel</button><button class="btn-add" onclick="addGroup('${tabId}')">Add segment</button></div></div>`;
+  main.appendChild(panel);
+
+  // Wire Enter key for first segment form
+  const inp = document.getElementById('form-title-' + segId);
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(segId, tabId); });
+}
+
 function buildTasks(){
   const main=document.getElementById('main-content');
   Object.keys(TASKS).forEach(tab=>{
@@ -774,6 +1031,14 @@ function buildTasks(){
       html+=`<div class="notes-section"><div class="notes-label">Tab notes</div>
         <textarea class="notes-box" id="${data.noteId}" placeholder="${data.notePlaceholder}" oninput="saveTabNote('${tab}')"></textarea>
         <div class="notes-saved" id="saved-${tab}">Saved</div></div>`;
+    }
+    // Add segment button at bottom of each task tab
+    if (!['investors','b2b','focus'].includes(tab)) {
+      html += `<button class="add-group-btn" id="add-group-btn-${tab}" onclick="openAddGroupForm('${tab}')">` +
+        `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add segment</button>` +
+        `<div class="add-group-form" id="add-group-form-${tab}">` +
+        `<input id="new-group-input-${tab}" placeholder="Segment name…" onkeydown="if(event.key==='Enter')addGroup('${tab}')">` +
+        `<div class="add-group-form-actions"><button class="btn-cancel" onclick="openAddGroupForm('${tab}')">Cancel</button><button class="btn-add" onclick="addGroup('${tab}')">Add segment</button></div></div>`;
     }
     panel.innerHTML=html;
     main.appendChild(panel);
@@ -847,6 +1112,7 @@ function addTask(groupId,tab){
   customTasks[groupId].push(item);
   addedCustomIds.add(id);
   closeForm(groupId);
+  initDragDrop(container);
   saveState();
   updateAll();
   refreshDoneGroups();
@@ -968,7 +1234,8 @@ function clearFilters(){
 
 function updateAll(){
   let totalAll=0,doneAll=0;
-  TASK_TABS.forEach(tab=>{
+  const allTabs = [...TASK_TABS, ...Object.keys(customTabs)];
+  allTabs.forEach(tab=>{
     const items=document.querySelectorAll(`[data-tab="${tab}"]`);
     const total=items.length;
     const done=[...items].filter(i=>i.querySelector('.checkbox.done')).length;
@@ -1059,6 +1326,8 @@ function initUI(){
     const tab=panel?.id?.replace('panel-','')||'';
     input.addEventListener('keydown',e=>{if(e.key==='Enter')addTask(groupId,tab);});
   });
+  // Init drag & drop on all containers
+  document.querySelectorAll('[id^="items-"]').forEach(c => initDragDrop(c));
 }
 
 
@@ -1096,5 +1365,15 @@ document.addEventListener('click', function(e) {
 });
 
 </script>
+<div class="add-tab-overlay" id="add-tab-overlay" onclick="closeAddTabForm()"></div>
+<div class="add-tab-form" id="add-tab-form">
+  <h3>New tab</h3>
+  <input id="new-tab-input" placeholder="Tab name (e.g. Design, Operations…)" onkeydown="if(event.key==='Enter')document.getElementById('new-tab-seg-input').focus()">
+  <input id="new-tab-seg-input" placeholder="First segment name (e.g. Tasks)" onkeydown="if(event.key==='Enter')addTab()">
+  <div class="add-group-form-actions">
+    <button class="btn-cancel" onclick="closeAddTabForm()">Cancel</button>
+    <button class="btn-add" onclick="addTab()">Create tab</button>
+  </div>
+</div>
 </body>
 </html>
