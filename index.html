@@ -141,10 +141,8 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-// ── Firebase setup ────────────────────────────────────────────────────────────
-let db, STATE_DOC, NOTES_DOC, CUSTOM_DOC;
+let db, STATE_DOC, CUSTOM_DOC, NOTES_DOC;
 let lastSaveTime = 0;
-let lastCustomSaveTime = 0;
 
 try {
   firebase.initializeApp({
@@ -156,12 +154,11 @@ try {
     appId: "1:630457670269:web:02f8da305a84c656e32f14"
   });
   db = firebase.firestore();
-  STATE_DOC  = db.collection('vox').doc('state');   // done/prio/owners/comments per task id
-  NOTES_DOC  = db.collection('vox').doc('notes');   // tab notes
-  CUSTOM_DOC = db.collection('vox').doc('custom');  // custom tasks only
+  STATE_DOC  = db.collection('vox3').doc('state');
+  CUSTOM_DOC = db.collection('vox3').doc('custom');
+  NOTES_DOC  = db.collection('vox3').doc('notes');
 } catch(e) { console.warn('Firebase init failed:', e); }
 
-// ── Sync indicator ────────────────────────────────────────────────────────────
 window.showSyncDot = function(ok) {
   const dot = document.getElementById('sync-dot');
   const lbl = document.getElementById('sync-lbl');
@@ -171,7 +168,7 @@ window.showSyncDot = function(ok) {
   setTimeout(() => { dot.style.background = '#C4C2D8'; lbl.textContent = 'Live'; }, 2000);
 };
 
-// ── Save state (done/prio/owners/comments) ────────────────────────────────────
+// Save task state to STATE_DOC (merge so devices don't overwrite each other)
 window.saveToFirebase = function() {
   if (!STATE_DOC) return;
   lastSaveTime = Date.now();
@@ -190,12 +187,11 @@ window.saveToFirebase = function() {
   STATE_DOC.set(state, { merge: true })
     .then(() => window.showSyncDot(true))
     .catch(e => console.warn('State save error:', e));
-
 };
 
+// Save custom tasks structure (separate from state)
 window.saveCustomToFirebase = function() {
   if (!CUSTOM_DOC) return;
-  lastCustomSaveTime = Date.now();
   CUSTOM_DOC.set({ tasks: JSON.stringify(customTasks) })
     .catch(e => console.warn('Custom save error:', e));
 };
@@ -206,20 +202,17 @@ window.saveNotesToFirebase = function(tab, val) {
   NOTES_DOC.set(u, { merge: true }).catch(e => console.warn('Notes error:', e));
 };
 
-// ── Listeners ─────────────────────────────────────────────────────────────────
 window.startFirebaseListeners = function() {
   if (!STATE_DOC) return;
 
-  // 1. State listener — ONLY updates done/prio/owners/comments, NEVER touches DOM structure
+  // STATE listener: update done/prio/owners/comments only, never touch DOM structure
   STATE_DOC.onSnapshot(snap => {
-    // Skip if this snapshot was triggered by our own save (within 800ms)
     if (!snap.exists) {
-      // No Firebase data yet — show UI with defaults
-      const bar = document.getElementById('overview-bar');
-      if (bar) bar.style.opacity = '1';
+      document.getElementById('overview-bar').style.opacity = '1';
       return;
     }
-    if (Date.now() - lastSaveTime < 800) return;
+    // Skip echo of our own save
+    if (Date.now() - lastSaveTime < 1000) return;
     const state = snap.data();
     if (!state) return;
 
@@ -227,26 +220,18 @@ window.startFirebaseListeners = function() {
       const item = document.querySelector('[data-id="' + id + '"]');
       if (!item) return;
       const s = state[id];
-      const cb    = item.querySelector('.checkbox');
+      const cb = item.querySelector('.checkbox');
       const title = item.querySelector('.item-title');
-
-      // Done
       if (s.done === true  && !cb.classList.contains('done')) { cb.classList.add('done');    title.classList.add('done'); }
       if (s.done === false &&  cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
-
-      // Priority
       if (s.prio) {
         const ps = item.querySelector('[data-role="prio"]');
-        if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
+        if (ps && ps.value !== s.prio) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
         item.dataset.prio = s.prio;
         const tag = document.getElementById('prio-tag-' + id);
         if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
       }
-
-      // Owners
       if (s.owners) { ownerMap[id] = s.owners; renderOwnerChips(id); }
-
-      // Comment
       if (s.comment !== undefined) {
         const box = document.getElementById('comment-' + id);
         const lbl = document.getElementById('comment-lbl-' + id);
@@ -264,85 +249,79 @@ window.startFirebaseListeners = function() {
     updateAll();
     refreshDoneGroups();
     refreshFocusTab();
-    // Reveal UI once Firebase has loaded real state
-    const bar = document.getElementById('overview-bar');
-    if (bar) bar.style.opacity = '1';
+    document.getElementById('overview-bar').style.opacity = '1';
   });
 
-  // 2. Custom tasks listener — only adds NEW tasks, never touches existing ones
+  // CUSTOM listener: only add tasks missing from DOM, only remove tasks deleted elsewhere
+  // NEVER re-add or modify tasks already in DOM
   CUSTOM_DOC.onSnapshot(snap => {
     if (!snap.exists) return;
     const data = snap.data();
     if (!data || !data.tasks) return;
+    let changed = false;
 
     try {
       const ct = JSON.parse(data.tasks);
-      const allIds = new Set();
+      const firebaseIds = new Set();
 
-      // Add only tasks not already in DOM
+      // Add tasks missing from DOM
       Object.keys(ct).forEach(groupId => {
         const container = document.getElementById('items-' + groupId);
         if (!container) return;
         const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
         (ct[groupId] || []).forEach(item => {
-          allIds.add(item.id);
-          if (document.querySelector('[data-id="' + item.id + '"]')) return; // already exists
-          // New task — fetch its state from STATE_DOC before adding
+          firebaseIds.add(item.id);
+          if (document.querySelector('[data-id="' + item.id + '"]')) return; // already in DOM
+          // New task — add it, then apply its saved state from STATE_DOC
           container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
           if (!customTasks[groupId]) customTasks[groupId] = [];
           customTasks[groupId].push(item);
-          if (!ownerMap[item.id]) { ownerMap[item.id] = []; renderOwnerChips(item.id); }
+          ownerMap[item.id] = [];
+          renderOwnerChips(item.id);
+          // Apply saved state
+          STATE_DOC.get().then(stateSnap => {
+            if (!stateSnap.exists) return;
+            const s = stateSnap.data()[item.id];
+            if (!s) return;
+            const el = document.querySelector('[data-id="' + item.id + '"]');
+            if (!el) return;
+            const cb = el.querySelector('.checkbox');
+            const title = el.querySelector('.item-title');
+            if (s.done === true)  { cb.classList.add('done');    title.classList.add('done'); }
+            if (s.done === false) { cb.classList.remove('done'); title.classList.remove('done'); }
+            if (s.prio) {
+              const ps = el.querySelector('[data-role="prio"]');
+              if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
+              el.dataset.prio = s.prio;
+              const tag = document.getElementById('prio-tag-' + item.id);
+              if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
+            }
+            if (s.owners) { ownerMap[item.id] = s.owners; renderOwnerChips(item.id); }
+            updateAll();
+            refreshDoneGroups();
+            refreshFocusTab();
+          });
+          changed = true;
         });
       });
 
       // Remove tasks deleted on another device
       document.querySelectorAll('.item[data-id^="c"]').forEach(el => {
-        if (!allIds.has(el.dataset.id)) {
+        if (!firebaseIds.has(el.dataset.id)) {
           el.remove();
           Object.keys(customTasks).forEach(g => {
             customTasks[g] = (customTasks[g] || []).filter(t => t.id !== el.dataset.id);
           });
+          changed = true;
         }
       });
 
-      // Apply STATE_DOC state to any newly added tasks
-      STATE_DOC.get().then(stateSnap => {
-        const state = (stateSnap.exists && stateSnap.data()) || {};
-        document.querySelectorAll('.item[data-id^="c"]').forEach(item => {
-          const id = item.dataset.id;
-          const s = state[id];
-          if (!s) return;
-          const cb = item.querySelector('.checkbox');
-          const title = item.querySelector('.item-title');
-          if (s.done === true  && !cb.classList.contains('done')) { cb.classList.add('done');    title.classList.add('done'); }
-          if (s.done === false &&  cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
-          if (s.prio) {
-            const ps = item.querySelector('[data-role="prio"]');
-            if (ps && ps.value !== s.prio) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
-            item.dataset.prio = s.prio;
-            const tag = document.getElementById('prio-tag-' + id);
-            if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
-          }
-          if (s.owners) { ownerMap[id] = s.owners; renderOwnerChips(id); }
-        });
-        updateAll();
-        refreshDoneGroups();
-        refreshFocusTab();
-      }).catch(() => {
-        updateAll();
-        refreshDoneGroups();
-        refreshFocusTab();
-      });
+    } catch(e) { console.warn('Custom tasks error:', e); }
 
-    } catch(e) {
-      console.warn('Custom tasks restore error:', e);
-      updateAll();
-      refreshDoneGroups();
-      refreshFocusTab();
-    }
+    if (changed) { updateAll(); refreshDoneGroups(); refreshFocusTab(); }
   });
 
-  // 3. Notes listener
+  // NOTES listener
   NOTES_DOC.onSnapshot(snap => {
     if (!snap.exists) return;
     const notes = snap.data();
@@ -367,7 +346,7 @@ window.startFirebaseListeners = function() {
     <div class="header-right">Launch Dashboard &nbsp;·&nbsp; March 2026</div>
   </div>
 </header>
-<div class="overview" id="overview-bar" style="opacity:0;transition:opacity .3s">
+<div class="overview" id="overview-bar" style="opacity:0;transition:opacity .4s">
   <div class="overview-top">
     <div><div class="overall-label">Overall progress</div><div class="overall-pct" id="overall-pct">0%</div></div>
     <div class="mini-stats">
@@ -621,8 +600,6 @@ function removeOwner(id,owner){
   applyFilters();
 }
 
-function getDoneItems(container){ return [...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done')); }
-
 function refreshDoneGroups(){
   TASK_TABS.forEach(tab=>{
     const data=TASKS[tab];
@@ -630,23 +607,12 @@ function refreshDoneGroups(){
     data.groups.forEach(g=>{
       const container=document.getElementById('items-'+g.id);
       if(!container)return;
-      const doneItems=getDoneItems(container);
+      const doneItems=[...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done'));
+      const undoneItems=[...container.querySelectorAll('.item')].filter(i=>!i.querySelector('.checkbox.done'));
       let toggle=container.parentElement.querySelector('.done-toggle');
-      if(doneItems.length===0){
-        if(toggle)toggle.remove();
-        container.querySelectorAll('.item').forEach(i=>i.style.display='');
-        return;
-      }
+      if(doneItems.length===0){if(toggle)toggle.remove();return;}
       const collapsed=toggle?toggle.dataset.collapsed==='true':true;
-      // Re-query and apply visibility to ALL items in container
-      [...container.querySelectorAll('.item')].forEach(i=>{
-        const isDone=!!i.querySelector('.checkbox.done');
-        if(isDone) i.style.display=collapsed?'none':'';
-        else i.style.display='';
-      });
-      const label = collapsed
-        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`
-        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`;
+      doneItems.forEach(i=>i.style.display=collapsed?'none':'');
       if(!toggle){
         toggle=document.createElement('button');
         toggle.className='done-toggle';
@@ -655,15 +621,15 @@ function refreshDoneGroups(){
         toggle.addEventListener('click',()=>{
           const c=toggle.dataset.collapsed==='true';
           toggle.dataset.collapsed=(!c).toString();
-          // Re-query at click time
-          const current=getDoneItems(container);
-          current.forEach(i=>i.style.display=c?'':'none');
+          doneItems.forEach(i=>i.style.display=c?'':'none');
           toggle.innerHTML=c
-            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${current.length})`
-            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${current.length})`;
+            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`
+            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`;
         });
       }
-      toggle.innerHTML=label;
+      toggle.innerHTML=collapsed
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${doneItems.length})`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${doneItems.length})`;
     });
   });
 }
@@ -722,7 +688,7 @@ function refreshFocusTab(){
   panel.innerHTML=html;
 }
 
-function uid(){return 'c'+Date.now()+''+Math.floor(Math.random()*9999);}
+function uid(){return 'c'+(idCounter++);}
 
 function makeItemHTML(item,tab){
   const isDone=item.done||false;
@@ -930,7 +896,6 @@ function toggleItem(id){
   saveState();updateAll();
   refreshDoneGroups();
   refreshFocusTab();
-
 }
 
 function setPrio(id,sel){
@@ -1162,24 +1127,13 @@ function loadState(){
 }
 
 buildTasks();
-
-// Init owner chips with defaults
-document.querySelectorAll('.item[data-id]').forEach(item => {
-  const id = item.dataset.id;
-  if (!ownerMap[id]) {
-    const def = item.dataset.owner;
-    ownerMap[id] = def ? [def] : [];
-  }
-  renderOwnerChips(id);
-});
-
+loadState();
 updateAll();
 applyFilters();
 refreshDoneGroups();
 refreshFocusTab();
-
-// Start Firebase — updates state on top of defaults
-try { if (window.startFirebaseListeners) window.startFirebaseListeners(); } catch(e) { console.warn('Firebase unavailable'); }
+// Start Firebase real-time sync after DOM is built
+try { if (window.startFirebaseListeners) window.startFirebaseListeners(); } catch(e) { console.warn('Firebase sync unavailable'); }
 
 // Close open comment boxes when clicking outside
 document.addEventListener('click', function(e) {
