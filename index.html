@@ -655,6 +655,8 @@ function refreshFocusTab(){
     html+=`<div class="focus-section-label">Critical — ${critical.length} task${critical.length!==1?'s':''}</div>`;
     critical.forEach(item=>{
       const clone=item.cloneNode(true);
+      clone.removeAttribute('data-tab');
+      clone.removeAttribute('data-id');
       clone.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
       clone.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
       clone.querySelectorAll('select,.delete-btn,.comment-toggle,.item-comment-wrap').forEach(el=>el.remove());
@@ -671,6 +673,8 @@ function refreshFocusTab(){
     html+=`<div class="focus-section-label" style="margin-top:${critical.length?'1.5rem':'0'}">Now — ${now.length} task${now.length!==1?'s':''}</div>`;
     now.forEach(item=>{
       const clone=item.cloneNode(true);
+      clone.removeAttribute('data-tab');
+      clone.removeAttribute('data-id');
       clone.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
       clone.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
       clone.querySelectorAll('select,.delete-btn,.comment-toggle,.item-comment-wrap').forEach(el=>el.remove());
