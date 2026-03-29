@@ -1402,6 +1402,12 @@ function initTabDragDrop() {
       tab.classList.remove('tab-dragging');
       tabBar.querySelectorAll('.tab').forEach(t => t.classList.remove('tab-drag-over'));
       dragTab = null;
+      // Save order immediately to both localStorage and Firebase
+      const order = [...tabBar.querySelectorAll('.tab')]
+        .filter(t => t.id && t.id !== 'add-tab-btn')
+        .map(t => t.id);
+      localStorage.setItem('vox-tab-order', JSON.stringify(order));
+      saveState();
     });
     tab.addEventListener('dragover', e => {
       e.preventDefault();
@@ -1432,8 +1438,22 @@ function initTabDragDrop() {
 
 buildTasks();
 
-// Wipe ALL stale localStorage data
-Object.keys(localStorage).filter(k => k.startsWith('vox-')).forEach(k => localStorage.removeItem(k));
+// Restore tab order from localStorage immediately (before Firebase fires)
+try {
+  const savedOrder = localStorage.getItem('vox-tab-order');
+  if (savedOrder) {
+    const order = JSON.parse(savedOrder);
+    const tabBar = document.querySelector('.tab-bar');
+    const addBtn = document.getElementById('add-tab-btn');
+    order.forEach(tabId => {
+      const tab = document.getElementById(tabId);
+      if (tab && tab !== addBtn) tabBar.insertBefore(tab, addBtn);
+    });
+  }
+} catch(e) {}
+
+// Wipe ALL stale localStorage data EXCEPT tab order
+Object.keys(localStorage).filter(k => k.startsWith('vox-') && k !== 'vox-tab-order').forEach(k => localStorage.removeItem(k));
 
 initUI();
 updateAll();
