@@ -152,7 +152,10 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 // ─── Firebase ────────────────────────────────────────────────────────────────
 let db, REF;
 let mySaveTime = 0;
-const addedCustomIds = new Set(); // track custom tasks added to DOM
+const addedCustomIds = new Set();
+// These must be declared early so collectState can reference them
+let customGroups = {};
+let customTabs = {};
 
 try {
   firebase.initializeApp({
@@ -579,8 +582,6 @@ const TASKS={
 };
 
 let customTasks={};
-let customGroups={}; // groupId -> { label, tab }
-let customTabs={};   // tabId -> label
 let idCounter=1000;
 let ownerMap={};  // id -> [owner1, owner2, ...]
 
@@ -900,7 +901,7 @@ function initDragDrop(container) {
 }
 
 // ── New segment ───────────────────────────────────────────────────────────────
-let customGroups = {}; // groupId -> { label, tab }
+// customGroups declared in Firebase block
 
 function openAddGroupForm(tab) {
   const form = document.getElementById('add-group-form-' + tab);
@@ -949,7 +950,7 @@ function saveGroupLabel(groupId, el) {
 }
 
 // ── New tab ───────────────────────────────────────────────────────────────────
-let customTabs = {}; // tabId -> label
+// customTabs declared in Firebase block
 
 function openAddTabForm() {
   document.getElementById('add-tab-overlay').classList.add('open');
