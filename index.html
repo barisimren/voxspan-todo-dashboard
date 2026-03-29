@@ -640,50 +640,48 @@ function removeOwner(id,owner){
 
 function getDone(container){return [...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done'));}
 
+function getDone(container){return [...container.querySelectorAll('.item')].filter(i=>i.querySelector('.checkbox.done'));}
+
 function refreshDoneGroups(){
-  TASK_TABS.forEach(tab=>{
-    const data=TASKS[tab];
-    if(!data)return;
-    data.groups.forEach(g=>{
-      const container=document.getElementById('items-'+g.id);
-      if(!container)return;
-      const doneItems=getDone(container);
-      let toggle=container.parentElement.querySelector('.done-toggle');
-      if(doneItems.length===0){
-        if(toggle)toggle.remove();
-        container.querySelectorAll('.item').forEach(i=>i.style.display='');
-        return;
-      }
-      const collapsed=toggle?toggle.dataset.collapsed==='true':true;
-      // Re-query ALL items and set visibility
-      container.querySelectorAll('.item').forEach(i=>{
-        i.style.display=(i.querySelector('.checkbox.done')&&collapsed)?'none':'';
-      });
-      const count=getDone(container).length;
-      const label=collapsed
-        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${count})`
-        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${count})`;
-      if(!toggle){
-        toggle=document.createElement('button');
-        toggle.className='done-toggle';
-        toggle.dataset.collapsed='true';
-        container.parentElement.insertBefore(toggle,container.parentElement.querySelector('.add-task-btn'));
-        toggle.addEventListener('click',()=>{
-          const c=toggle.dataset.collapsed==='true';
-          toggle.dataset.collapsed=(!c).toString();
-          container.querySelectorAll('.item').forEach(i=>{
-            i.style.display=(i.querySelector('.checkbox.done')&&!c)?'none':'';  
-          });
-          const n=getDone(container).length;
-          toggle.innerHTML=!c
-            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${n})`
-            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${n})`;
-        });
-      }
-      toggle.innerHTML=label;
+  // Query ALL item containers directly — works for default, custom segments, and custom tabs
+  document.querySelectorAll('[id^="items-"]').forEach(container=>{
+    if(container.closest('#panel-focus'))return; // skip focus panel clones
+    const doneItems=getDone(container);
+    let toggle=container.parentElement.querySelector('.done-toggle');
+    if(doneItems.length===0){
+      if(toggle)toggle.remove();
+      container.querySelectorAll('.item').forEach(i=>i.style.display='');
+      return;
+    }
+    const collapsed=toggle?toggle.dataset.collapsed==='true':true;
+    container.querySelectorAll('.item').forEach(i=>{
+      i.style.display=(i.querySelector('.checkbox.done')&&collapsed)?'none':'';
     });
+    const count=getDone(container).length;
+    const label=collapsed
+      ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${count})`
+      : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${count})`;
+    if(!toggle){
+      toggle=document.createElement('button');
+      toggle.className='done-toggle';
+      toggle.dataset.collapsed='true';
+      container.parentElement.insertBefore(toggle,container.parentElement.querySelector('.add-task-btn')||container.nextSibling);
+      toggle.addEventListener('click',()=>{
+        const c=toggle.dataset.collapsed==='true';
+        toggle.dataset.collapsed=(!c).toString();
+        container.querySelectorAll('.item').forEach(i=>{
+          i.style.display=(i.querySelector('.checkbox.done')&&!c)?'none':'';
+        });
+        const n=getDone(container).length;
+        toggle.innerHTML=!c
+          ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> Show completed (${n})`
+          : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg> Hide completed (${n})`;
+      });
+    }
+    toggle.innerHTML=label;
   });
 }
+
 
 function refreshFocusTab(){
   const panel=document.getElementById('panel-focus');
