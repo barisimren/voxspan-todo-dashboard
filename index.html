@@ -118,6 +118,13 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 .no-results.show{display:block}
 .done-toggle{font-size:11px;color:#8A8AA8;background:none;border:none;cursor:pointer;padding:4px 0;font-family:inherit;display:flex;align-items:center;gap:4px;margin-top:4px}
 .done-toggle:hover{color:#5B3FD0}
+.add-group-btn{display:flex;align-items:center;gap:6px;margin:1.5rem 2rem 0.5rem;padding:8px 14px;background:none;border:1.5px dashed #C4C2D8;border-radius:8px;font-size:12px;color:#8A8AA8;cursor:pointer;transition:all .15s;}
+.add-group-btn:hover{border-color:#5B3FD0;color:#5B3FD0;background:#F2EFFE;}
+.add-group-form{display:none;margin:0 2rem 1rem;padding:12px;background:#F0EFF8;border-radius:8px;gap:8px;flex-direction:column;}
+.add-group-form.open{display:flex;}
+.add-group-form input{padding:7px 10px;border:1px solid #E2E0F0;border-radius:6px;font-size:13px;font-family:inherit;color:#1E2D7A;outline:none;}
+.add-group-form input:focus{border-color:#5B3FD0;}
+.add-group-form-actions{display:flex;gap:8px;}
 .focus-empty{text-align:center;padding:3rem 1rem;color:#8A8AA8;font-size:14px}
 .focus-section-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8A8AA8;margin-bottom:.5rem;padding-bottom:.4rem;border-bottom:1px solid #E2E0F0;margin-top:1.5rem}
 .focus-section-label:first-child{margin-top:0}
@@ -752,6 +759,45 @@ function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function addGroup(tab){
+  const input = document.getElementById('new-group-input-'+tab);
+  const label = input ? input.value.trim() : '';
+  if(!label) return input && input.focus();
+  const groupId = tab+'-cg-'+Date.now();
+  const panel = document.getElementById('panel-'+tab);
+  // Remove the add-group button and form temporarily
+  const btn = document.getElementById('add-group-btn-'+tab);
+  const form = document.getElementById('add-group-form-'+tab);
+  // Build new group HTML
+  const groupDiv = document.createElement('div');
+  groupDiv.className = 'group';
+  groupDiv.id = 'group-'+groupId;
+  groupDiv.innerHTML =
+    `<div class="group-label">${escHtml(label)}</div>` +
+    `<div class="items-container" id="items-${groupId}"></div>` +
+    makeAddForm(groupId, tab);
+  // Insert before the add-group button
+  panel.insertBefore(groupDiv, btn);
+  // Wire Enter key for the new form
+  const newInput = document.getElementById('form-title-'+groupId);
+  if(newInput) newInput.addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(groupId,tab); });
+  // Reset and close form
+  if(input) input.value = '';
+  if(form) form.classList.remove('open');
+  // Save to Firebase
+  if(window.saveToFirebase) window.saveToFirebase();
+  updateAll();
+}
+
+function openAddGroupForm(tab){
+  const form = document.getElementById('add-group-form-'+tab);
+  if(!form) return;
+  form.classList.toggle('open');
+  if(form.classList.contains('open')){
+    setTimeout(()=>{ const i=document.getElementById('new-group-input-'+tab); if(i)i.focus(); },50);
+  }
+}
+
 function buildTasks(){
   const main=document.getElementById('main-content');
   Object.keys(TASKS).forEach(tab=>{
@@ -774,6 +820,20 @@ function buildTasks(){
       html+=`<div class="notes-section"><div class="notes-label">Tab notes</div>
         <textarea class="notes-box" id="${data.noteId}" placeholder="${data.notePlaceholder}" oninput="saveTabNote('${tab}')"></textarea>
         <div class="notes-saved" id="saved-${tab}">Saved</div></div>`;
+    }
+    // Add segment button at bottom of tab
+    if(!['investors','b2b','focus'].includes(tab)){
+      html += `<button class="add-group-btn" id="add-group-btn-${tab}" onclick="openAddGroupForm('${tab}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add segment
+      </button>
+      <div class="add-group-form" id="add-group-form-${tab}">
+        <input id="new-group-input-${tab}" placeholder="Segment name…" onkeydown="if(event.key==='Enter')addGroup('${tab}')">
+        <div class="add-group-form-actions">
+          <button class="btn-cancel" onclick="openAddGroupForm('${tab}')">Cancel</button>
+          <button class="btn-add" onclick="addGroup('${tab}')">Add segment</button>
+        </div>
+      </div>`;
     }
     panel.innerHTML=html;
     main.appendChild(panel);
