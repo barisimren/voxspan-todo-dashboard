@@ -224,7 +224,11 @@ function collectState() {
     if (ids.length) order[container.id.replace('items-', '')] = ids;
   });
 
-  return { tasks, notes, customGroups, customTabs, order };
+  // Save tab order using IDs
+  const tabOrder = [...document.querySelectorAll('.tab-bar .tab')]
+    .filter(t => t.id && t.id !== 'add-tab-btn')
+    .map(t => t.id);
+  return { tasks, notes, customGroups, customTabs, order, tabOrder };
 }
 
 // Apply state from Firebase onto DOM
@@ -324,6 +328,16 @@ function applySnapshot(data) {
     });
   }
 
+  // Restore tab order
+  if (data.tabOrder && data.tabOrder.length) {
+    const tabBar = document.querySelector('.tab-bar');
+    const addBtn = document.getElementById('add-tab-btn');
+    data.tabOrder.forEach(tabId => {
+      const tab = document.getElementById(tabId);
+      if (tab && tab !== addBtn) tabBar.insertBefore(tab, addBtn);
+    });
+  }
+
   // Restore item order
   if (order) {
     Object.keys(order).forEach(groupId => {
@@ -416,17 +430,17 @@ window.startFirebaseListeners = function() {
   <span class="search-count" id="search-count"></span>
 </div>
 <div class="tab-bar">
-  <div class="tab active" onclick="showTab('brand',this)">Brand <span class="tab-badge" id="badge-brand"></span></div>
-  <div class="tab" onclick="showTab('pitch',this)">Pitch Deck <span class="tab-badge" id="badge-pitch"></span></div>
-  <div class="tab" onclick="showTab('legal',this)">Legal <span class="tab-badge" id="badge-legal"></span></div>
-  <div class="tab" onclick="showTab('product',this)">Product <span class="tab-badge" id="badge-product"></span></div>
-  <div class="tab" onclick="showTab('gtm',this)">GTM <span class="tab-badge" id="badge-gtm"></span></div>
-  <div class="tab" onclick="showTab('fundraising',this)">Fundraising <span class="tab-badge" id="badge-fundraising"></span></div>
-  <div class="tab" onclick="showTab('team',this)">Team <span class="tab-badge" id="badge-team"></span></div>
-  <div class="tab" onclick="showTab('investors',this)">Investors</div>
-  <div class="tab" onclick="showTab('b2b',this)">B2B Pipeline</div>
-  <div class="tab" onclick="showTab('90days',this)">90-Day Plan <span class="tab-badge" id="badge-90days"></span></div>
-  <div class="tab" onclick="showTab('focus',this)">⚡ Today's Focus <span class="tab-badge" id="badge-focus"></span></div>
+  <div class="tab active" id="tab-brand" onclick="showTab('brand',this)">Brand <span class="tab-badge" id="badge-brand"></span></div>
+  <div class="tab" id="tab-pitch" onclick="showTab('pitch',this)">Pitch Deck <span class="tab-badge" id="badge-pitch"></span></div>
+  <div class="tab" id="tab-legal" onclick="showTab('legal',this)">Legal <span class="tab-badge" id="badge-legal"></span></div>
+  <div class="tab" id="tab-product" onclick="showTab('product',this)">Product <span class="tab-badge" id="badge-product"></span></div>
+  <div class="tab" id="tab-gtm" onclick="showTab('gtm',this)">GTM <span class="tab-badge" id="badge-gtm"></span></div>
+  <div class="tab" id="tab-fundraising" onclick="showTab('fundraising',this)">Fundraising <span class="tab-badge" id="badge-fundraising"></span></div>
+  <div class="tab" id="tab-team" onclick="showTab('team',this)">Team <span class="tab-badge" id="badge-team"></span></div>
+  <div class="tab" id="tab-investors" onclick="showTab('investors',this)">Investors</div>
+  <div class="tab" id="tab-b2b" onclick="showTab('b2b',this)">B2B Pipeline</div>
+  <div class="tab" id="tab-90days" onclick="showTab('90days',this)">90-Day Plan <span class="tab-badge" id="badge-90days"></span></div>
+  <div class="tab" id="tab-focus" onclick="showTab('focus',this)">⚡ Today's Focus <span class="tab-badge" id="badge-focus"></span></div>
   <div class="tab add-tab-btn" id="add-tab-btn" onclick="openAddTabForm()" title="Add new tab">+ Tab</div>
 </div>
 <main id="main-content">
