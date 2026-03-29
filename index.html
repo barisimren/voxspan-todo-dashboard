@@ -1110,7 +1110,12 @@ function loadState(){
 }
 
 buildTasks();
-loadState();
+
+// Wipe stale localStorage custom task data
+localStorage.removeItem('vox-custom');
+localStorage.removeItem('vox-owners');
+localStorage.removeItem('vox-state-v5');
+
 updateAll();
 applyFilters();
 refreshDoneGroups();
