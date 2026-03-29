@@ -866,14 +866,26 @@ function saveItemNote(id, el) {
 let dragSrc = null;
 
 function initDragDrop(container) {
+  // Remove old listeners by cloning items
   container.querySelectorAll('.item[draggable]').forEach(item => {
+    // Only start drag from the handle
+    const handle = item.querySelector('.drag-handle');
+    if (handle) {
+      handle.addEventListener('mousedown', () => { item.draggable = true; });
+      handle.addEventListener('mouseup', () => { item.draggable = false; });
+    }
+
     item.addEventListener('dragstart', e => {
+      if (!item.draggable) { e.preventDefault(); return; }
       dragSrc = item;
-      item.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', item.dataset.id);
+      setTimeout(() => item.classList.add('dragging'), 0);
     });
+
     item.addEventListener('dragend', () => {
       item.classList.remove('dragging');
+      item.draggable = false;
       container.querySelectorAll('.item').forEach(i => i.classList.remove('drag-over'));
       dragSrc = null;
       saveState();
@@ -881,13 +893,21 @@ function initDragDrop(container) {
       refreshDoneGroups();
       refreshFocusTab();
     });
+
     item.addEventListener('dragover', e => {
       e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
       if (!dragSrc || dragSrc === item) return;
-      // Only allow within same container
       if (!container.contains(dragSrc)) return;
       container.querySelectorAll('.item').forEach(i => i.classList.remove('drag-over'));
       item.classList.add('drag-over');
+    });
+
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!dragSrc || dragSrc === item) return;
+      if (!container.contains(dragSrc)) return;
       const rect = item.getBoundingClientRect();
       const mid = rect.top + rect.height / 2;
       if (e.clientY < mid) {
@@ -896,7 +916,15 @@ function initDragDrop(container) {
         container.insertBefore(dragSrc, item.nextSibling);
       }
     });
-    item.addEventListener('drop', e => { e.preventDefault(); });
+  });
+
+  // Allow drop on the container itself (for dropping at end)
+  container.addEventListener('dragover', e => e.preventDefault());
+  container.addEventListener('drop', e => {
+    e.preventDefault();
+    if (dragSrc && container.contains(dragSrc)) {
+      container.appendChild(dragSrc);
+    }
   });
 }
 
