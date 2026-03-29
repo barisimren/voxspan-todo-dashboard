@@ -141,103 +141,130 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-let db, STATE_DOC, CUSTOM_DOC, NOTES_DOC;
-let lastSaveTime = 0;
+// ─── Firebase ────────────────────────────────────────────────────────────────
+let db, REF;
+let mySaveTime = 0;
 
 try {
   firebase.initializeApp({
-    apiKey: "AIzaSyDLw64yc5Re9_2kt2JLqKjZ2ukEd7Cajl4",
-    authDomain: "voxspan-to-do-dashboard.firebaseapp.com",
-    projectId: "voxspan-to-do-dashboard",
-    storageBucket: "voxspan-to-do-dashboard.firebasestorage.app",
-    messagingSenderId: "630457670269",
-    appId: "1:630457670269:web:02f8da305a84c656e32f14"
+    apiKey:"AIzaSyDLw64yc5Re9_2kt2JLqKjZ2ukEd7Cajl4",
+    authDomain:"voxspan-to-do-dashboard.firebaseapp.com",
+    projectId:"voxspan-to-do-dashboard",
+    storageBucket:"voxspan-to-do-dashboard.firebasestorage.app",
+    messagingSenderId:"630457670269",
+    appId:"1:630457670269:web:02f8da305a84c656e32f14"
   });
   db = firebase.firestore();
-  STATE_DOC  = db.collection('vox3').doc('state');
-  CUSTOM_DOC = db.collection('vox3').doc('custom');
-  NOTES_DOC  = db.collection('vox3').doc('notes');
-} catch(e) { console.warn('Firebase init failed:', e); }
+  REF = db.collection('v4').doc('dashboard');
+} catch(e) { console.warn('Firebase unavailable:', e); }
 
+// Show sync indicator
 window.showSyncDot = function(ok) {
-  const dot = document.getElementById('sync-dot');
-  const lbl = document.getElementById('sync-lbl');
-  if (!dot || !lbl) return;
-  dot.style.background = ok ? '#00D4A8' : '#E05050';
-  lbl.textContent = ok ? 'Synced' : 'Offline';
-  setTimeout(() => { dot.style.background = '#C4C2D8'; lbl.textContent = 'Live'; }, 2000);
+  const d = document.getElementById('sync-dot');
+  const l = document.getElementById('sync-lbl');
+  if (!d) return;
+  d.style.background = ok ? '#00D4A8' : '#E05050';
+  l.textContent = ok ? 'Synced' : 'Live';
+  setTimeout(() => { d.style.background = '#C4C2D8'; l.textContent = 'Live'; }, 2000);
 };
 
-// Save task state to STATE_DOC (merge so devices don't overwrite each other)
-window.saveToFirebase = function() {
-  if (!STATE_DOC) return;
-  lastSaveTime = Date.now();
-  const state = {};
+// Collect full dashboard state from DOM
+function collectState() {
+  const tasks = {};
   document.querySelectorAll('.item[data-id]').forEach(item => {
     const id = item.dataset.id;
     const ps = item.querySelector('[data-role="prio"]');
     const box = document.getElementById('comment-' + id);
-    state[id] = {
+    const isCustom = id.startsWith('c');
+    tasks[id] = {
       done:    item.querySelector('.checkbox').classList.contains('done'),
       prio:    ps ? ps.value : 'later',
       owners:  ownerMap[id] || [],
       comment: box ? box.value : ''
     };
-  });
-  STATE_DOC.set(state, { merge: true })
-    .then(() => window.showSyncDot(true))
-    .catch(e => console.warn('State save error:', e));
-};
-
-// Save custom tasks structure (separate from state)
-window.saveCustomToFirebase = function() {
-  if (!CUSTOM_DOC) return;
-  CUSTOM_DOC.set({ tasks: JSON.stringify(customTasks) })
-    .catch(e => console.warn('Custom save error:', e));
-};
-
-window.saveNotesToFirebase = function(tab, val) {
-  if (!NOTES_DOC) return;
-  const u = {}; u[tab] = val;
-  NOTES_DOC.set(u, { merge: true }).catch(e => console.warn('Notes error:', e));
-};
-
-window.startFirebaseListeners = function() {
-  if (!STATE_DOC) return;
-
-  // STATE listener: update done/prio/owners/comments only, never touch DOM structure
-  STATE_DOC.onSnapshot(snap => {
-    if (!snap.exists) {
-      document.getElementById('overview-bar').style.opacity = '1';
-      return;
+    if (isCustom) {
+      const titleEl = item.querySelector('.item-title');
+      const noteEl  = item.querySelector('.item-note-text');
+      const grpEl   = item.closest('[id^="items-"]');
+      const panelEl = item.closest('.panel');
+      tasks[id].custom = {
+        title:   titleEl ? titleEl.textContent.trim() : '',
+        note:    noteEl  ? noteEl.textContent.trim()  : '',
+        groupId: grpEl   ? grpEl.id.replace('items-', '') : '',
+        tab:     panelEl ? panelEl.id.replace('panel-', '') : ''
+      };
     }
-    // Skip echo of our own save
-    if (Date.now() - lastSaveTime < 1000) return;
-    const state = snap.data();
-    if (!state) return;
+  });
 
-    Object.keys(state).forEach(id => {
+  const notes = {};
+  [...Object.keys(TASKS), 'investors', 'b2b'].forEach(tab => {
+    const key = (TASKS[tab] && TASKS[tab].noteId) || ('notes-' + tab);
+    const el = document.getElementById(key);
+    if (el && el.value) notes[tab] = el.value;
+  });
+
+  return { tasks, notes };
+}
+
+// Apply state from Firebase onto DOM
+function applySnapshot(data) {
+  if (!data) return;
+  const { tasks, notes } = data;
+
+  if (tasks) {
+    // Step 1: add custom tasks missing from DOM
+    Object.keys(tasks).forEach(id => {
+      if (!id.startsWith('c')) return;
+      if (document.querySelector('[data-id="' + id + '"]')) return;
+      const t = tasks[id];
+      if (!t.custom) return;
+      const container = document.getElementById('items-' + t.custom.groupId);
+      if (!container) return;
+      const item = { id, title: t.custom.title, note: t.custom.note, prio: t.prio, owner: '', custom: true };
+      container.insertAdjacentHTML('beforeend', makeItemHTML(item, t.custom.tab));
+      if (!customTasks[t.custom.groupId]) customTasks[t.custom.groupId] = [];
+      customTasks[t.custom.groupId].push(item);
+      ownerMap[id] = t.owners || [];
+      renderOwnerChips(id);
+    });
+
+    // Step 2: remove custom tasks deleted elsewhere
+    document.querySelectorAll('.item[data-id^="c"]').forEach(el => {
+      if (!tasks[el.dataset.id]) {
+        el.remove();
+        Object.keys(customTasks).forEach(g => {
+          customTasks[g] = (customTasks[g] || []).filter(t => t.id !== el.dataset.id);
+        });
+      }
+    });
+
+    // Step 3: apply state to ALL tasks (including newly added ones)
+    Object.keys(tasks).forEach(id => {
       const item = document.querySelector('[data-id="' + id + '"]');
       if (!item) return;
-      const s = state[id];
-      const cb = item.querySelector('.checkbox');
+      const t = tasks[id];
+      const cb    = item.querySelector('.checkbox');
       const title = item.querySelector('.item-title');
-      if (s.done === true  && !cb.classList.contains('done')) { cb.classList.add('done');    title.classList.add('done'); }
-      if (s.done === false &&  cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
-      if (s.prio) {
+
+      if (t.done === true  && !cb.classList.contains('done')) { cb.classList.add('done');    title.classList.add('done'); }
+      if (t.done === false &&  cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
+
+      if (t.prio) {
         const ps = item.querySelector('[data-role="prio"]');
-        if (ps && ps.value !== s.prio) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
-        item.dataset.prio = s.prio;
+        if (ps && ps.value !== t.prio) { ps.value = t.prio; ps.className = 'ctrl prio-' + t.prio; }
+        item.dataset.prio = t.prio;
         const tag = document.getElementById('prio-tag-' + id);
-        if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
+        if (tag) { tag.className = 'tag tag-' + t.prio; tag.textContent = PRIO_LABELS[t.prio]; }
       }
-      if (s.owners) { ownerMap[id] = s.owners; renderOwnerChips(id); }
-      if (s.comment !== undefined) {
+
+      if (t.owners) { ownerMap[id] = t.owners; renderOwnerChips(id); }
+
+      if (t.comment !== undefined) {
         const box = document.getElementById('comment-' + id);
         const lbl = document.getElementById('comment-lbl-' + id);
-        if (box && box.value !== s.comment) {
-          box.value = s.comment;
-          if (s.comment.trim()) {
+        if (box && box.value !== t.comment) {
+          box.value = t.comment;
+          if (t.comment.trim()) {
             box.style.display = 'block';
             if (lbl) lbl.textContent = 'Hide note';
             updateNoteDot(id, true);
@@ -245,92 +272,46 @@ window.startFirebaseListeners = function() {
         }
       }
     });
+  }
 
-    updateAll();
-    refreshDoneGroups();
-    refreshFocusTab();
-    document.getElementById('overview-bar').style.opacity = '1';
-  });
-
-  // CUSTOM listener: only add tasks missing from DOM, only remove tasks deleted elsewhere
-  // NEVER re-add or modify tasks already in DOM
-  CUSTOM_DOC.onSnapshot(snap => {
-    if (!snap.exists) return;
-    const data = snap.data();
-    if (!data || !data.tasks) return;
-    let changed = false;
-
-    try {
-      const ct = JSON.parse(data.tasks);
-      const firebaseIds = new Set();
-
-      // Add tasks missing from DOM
-      Object.keys(ct).forEach(groupId => {
-        const container = document.getElementById('items-' + groupId);
-        if (!container) return;
-        const tab = container.closest('.panel')?.id?.replace('panel-', '') || '';
-        (ct[groupId] || []).forEach(item => {
-          firebaseIds.add(item.id);
-          if (document.querySelector('[data-id="' + item.id + '"]')) return; // already in DOM
-          // New task — add it, then apply its saved state from STATE_DOC
-          container.insertAdjacentHTML('beforeend', makeItemHTML(item, tab));
-          if (!customTasks[groupId]) customTasks[groupId] = [];
-          customTasks[groupId].push(item);
-          ownerMap[item.id] = [];
-          renderOwnerChips(item.id);
-          // Apply saved state
-          STATE_DOC.get().then(stateSnap => {
-            if (!stateSnap.exists) return;
-            const s = stateSnap.data()[item.id];
-            if (!s) return;
-            const el = document.querySelector('[data-id="' + item.id + '"]');
-            if (!el) return;
-            const cb = el.querySelector('.checkbox');
-            const title = el.querySelector('.item-title');
-            if (s.done === true)  { cb.classList.add('done');    title.classList.add('done'); }
-            if (s.done === false) { cb.classList.remove('done'); title.classList.remove('done'); }
-            if (s.prio) {
-              const ps = el.querySelector('[data-role="prio"]');
-              if (ps) { ps.value = s.prio; ps.className = 'ctrl prio-' + s.prio; }
-              el.dataset.prio = s.prio;
-              const tag = document.getElementById('prio-tag-' + item.id);
-              if (tag) { tag.className = 'tag tag-' + s.prio; tag.textContent = PRIO_LABELS[s.prio]; }
-            }
-            if (s.owners) { ownerMap[item.id] = s.owners; renderOwnerChips(item.id); }
-            updateAll();
-            refreshDoneGroups();
-            refreshFocusTab();
-          });
-          changed = true;
-        });
-      });
-
-      // Remove tasks deleted on another device
-      document.querySelectorAll('.item[data-id^="c"]').forEach(el => {
-        if (!firebaseIds.has(el.dataset.id)) {
-          el.remove();
-          Object.keys(customTasks).forEach(g => {
-            customTasks[g] = (customTasks[g] || []).filter(t => t.id !== el.dataset.id);
-          });
-          changed = true;
-        }
-      });
-
-    } catch(e) { console.warn('Custom tasks error:', e); }
-
-    if (changed) { updateAll(); refreshDoneGroups(); refreshFocusTab(); }
-  });
-
-  // NOTES listener
-  NOTES_DOC.onSnapshot(snap => {
-    if (!snap.exists) return;
-    const notes = snap.data();
-    if (!notes) return;
+  if (notes) {
     Object.keys(notes).forEach(tab => {
       const key = (TASKS[tab] && TASKS[tab].noteId) || ('notes-' + tab);
       const el = document.getElementById(key);
       if (el && el.value !== notes[tab]) el.value = notes[tab];
     });
+  }
+
+  updateAll();
+  refreshDoneGroups();
+  refreshFocusTab();
+}
+
+// Save everything to one Firebase document
+window.saveToFirebase = function() {
+  if (!REF) return;
+  mySaveTime = Date.now();
+  REF.set(collectState())
+    .then(() => window.showSyncDot(true))
+    .catch(e => console.warn('Save error:', e));
+};
+
+window.saveNotesToFirebase = function() {
+  if (window.saveToFirebase) window.saveToFirebase();
+};
+
+// One listener, one document
+window.startFirebaseListeners = function() {
+  if (!REF) return;
+  REF.onSnapshot(snap => {
+    // Ignore our own saves for 1.5s
+    if (Date.now() - mySaveTime < 1500) return;
+    if (!snap.exists) {
+      document.getElementById('overview-bar').style.opacity = '1';
+      return;
+    }
+    applySnapshot(snap.data());
+    document.getElementById('overview-bar').style.opacity = '1';
   });
 };
 </script>
@@ -846,7 +827,6 @@ function addTask(groupId,tab){
   customTasks[groupId].push(item);
   closeForm(groupId);
   saveState();
-  if(window.saveCustomToFirebase) window.saveCustomToFirebase();
   updateAll();
   refreshDoneGroups();
   refreshFocusTab();
@@ -861,7 +841,6 @@ function deleteTask(id,tab){
   });
   localStorage.removeItem('vox-comment-'+id);
   saveState();
-  if(window.saveCustomToFirebase) window.saveCustomToFirebase();
   updateAll();
 }
 
