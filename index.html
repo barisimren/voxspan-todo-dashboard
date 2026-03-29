@@ -224,7 +224,12 @@ function collectState() {
     if (ids.length) order[container.id.replace('items-', '')] = ids;
   });
 
-  return { tasks, notes, customGroups, customTabs, order };
+  // Save tab order
+  const tabOrder = [...document.querySelectorAll('.tab-bar .tab')]
+    .map(t => t.id)
+    .filter(id => id && id !== 'add-tab-btn');
+
+  return { tasks, notes, customGroups, customTabs, order, tabOrder };
 }
 
 // Apply state from Firebase onto DOM
@@ -321,6 +326,16 @@ function applySnapshot(data) {
       const key = (TASKS[tab] && TASKS[tab].noteId) || ('notes-' + tab);
       const el = document.getElementById(key);
       if (el && el.value !== notes[tab]) el.value = notes[tab];
+    });
+  }
+
+  // Restore tab order
+  if (data.tabOrder) {
+    const tabBar = document.querySelector('.tab-bar');
+    const addBtn = document.getElementById('add-tab-btn');
+    data.tabOrder.forEach(tabId => {
+      const tab = tabId ? (document.getElementById(tabId) || document.querySelector('[onclick*="showTab('' + tabId + ''"]')) : null;
+      if (tab && tab !== addBtn) tabBar.insertBefore(tab, addBtn);
     });
   }
 
@@ -1015,7 +1030,7 @@ function renderTab(tabId, label, firstSegLabel) {
   tabEl.className = 'tab';
   tabEl.id = 'tab-' + tabId;
   tabEl.setAttribute('onclick', `showTab('${tabId}',this)`);
-  tabEl.textContent = label;
+  tabEl.innerHTML = label + ' <span class="tab-badge" id="badge-' + tabId + '"></span>';
   tabBar.insertBefore(tabEl, addTabBtn);
 
   // Add panel
