@@ -144,6 +144,7 @@ select.owner-none{background-color:#F0EFF8;color:#8A8AA8;border-color:#E2E0F0}
 // ─── Firebase ────────────────────────────────────────────────────────────────
 let db, REF;
 let mySaveTime = 0;
+const addedCustomIds = new Set(); // track custom tasks added to DOM
 
 try {
   firebase.initializeApp({
@@ -155,7 +156,7 @@ try {
     appId:"1:630457670269:web:02f8da305a84c656e32f14"
   });
   db = firebase.firestore();
-  REF = db.collection('v5').doc('dashboard');
+  REF = db.collection('v6').doc('dashboard');
 } catch(e) { console.warn('Firebase unavailable:', e); }
 
 // Show sync indicator
@@ -215,6 +216,7 @@ function applySnapshot(data) {
     // Step 1: add custom tasks missing from DOM
     Object.keys(tasks).forEach(id => {
       if (!id.startsWith('c')) return;
+      if (addedCustomIds.has(id)) return;
       if (document.querySelector('[data-id="' + id + '"]')) return;
       const t = tasks[id];
       if (!t.custom) return;
@@ -226,6 +228,7 @@ function applySnapshot(data) {
       customTasks[t.custom.groupId].push(item);
       ownerMap[id] = t.owners || [];
       renderOwnerChips(id);
+      addedCustomIds.add(id);
     });
 
     // Step 2: remove custom tasks deleted elsewhere
@@ -825,6 +828,7 @@ function addTask(groupId,tab){
   renderOwnerChips(id);
   if(!customTasks[groupId])customTasks[groupId]=[];
   customTasks[groupId].push(item);
+  addedCustomIds.add(id);
   closeForm(groupId);
   saveState();
   updateAll();
