@@ -207,6 +207,12 @@ select.owner-none{background-color:#EFEEF6;color:#8A8AA8;border-color:var(--line
 .add-tab-form h3{font-size:17px;font-weight:700;color:var(--ink);margin:0 0 4px}
 .add-tab-form input{padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:13.5px;font-family:inherit;color:var(--ink);outline:none;background:var(--bg)}
 .add-tab-form input:focus{border-color:var(--purple);background:#fff}
+.tag-high{background:#FFDFDF;color:#A81414}
+.tag-medium{background:#FFF3E0;color:#C07200}
+.tag-low{background:#EFEEF6;color:#8A8AA8}
+select.prio-high{background-color:#FFDFDF;color:#A81414;border-color:#FFBBBB}
+select.prio-medium{background-color:#FFF3E0;color:#C07200;border-color:#FFE0B0}
+select.prio-low{background-color:#EFEEF6;color:#8A8AA8;border-color:var(--line)}
 .deadline-input{width:134px;font-size:11px;font-family:inherit;padding:5px 10px;border:1px solid var(--line);border-radius:20px;color:#6B6B8A;background:var(--card);cursor:pointer;outline:none;font-weight:600}
 .deadline-input:focus{border-color:var(--purple)}
 .deadline-input::-webkit-calendar-picker-indicator{opacity:.45;cursor:pointer}
@@ -366,11 +372,12 @@ function applySnapshot(data) {
       if (t.done === false &&  cb.classList.contains('done')) { cb.classList.remove('done'); title.classList.remove('done'); }
 
       if (t.prio) {
+        const np = normPrio(t.prio);
         const ps = item.querySelector('[data-role="prio"]');
-        if (ps && ps.value !== t.prio) { ps.value = t.prio; ps.className = 'ctrl prio-' + t.prio; }
-        item.dataset.prio = t.prio;
+        if (ps && ps.value !== np) { ps.value = np; ps.className = 'ctrl prio-' + np; }
+        item.dataset.prio = np;
         const tag = document.getElementById('prio-tag-' + id);
-        if (tag) { tag.className = 'tag tag-' + t.prio; tag.textContent = PRIO_LABELS[t.prio]; }
+        if (tag) { tag.className = 'tag tag-' + np; tag.textContent = PRIO_LABELS[np]; }
       }
 
       if (t.owners) { ownerMap[id] = t.owners; renderOwnerChips(id); }
@@ -499,11 +506,9 @@ window.startFirebaseListeners = function() {
   <span class="filter-label">Priority:</span>
   <select class="filter-select" id="filter-prio" onchange="applyFilters()">
     <option value="">All</option>
-    <option value="critical">Critical</option>
-    <option value="now">Now</option>
-    <option value="week">This week</option>
-    <option value="later">Later</option>
-    <option value="done">Done</option>
+    <option value="high">High</option>
+    <option value="medium">Medium</option>
+    <option value="low">Low</option>
   </select>
   <button class="clear-btn" onclick="clearFilters()">Clear</button>
   <span class="search-count" id="search-count"></span>
@@ -529,8 +534,10 @@ window.startFirebaseListeners = function() {
 
 <script>
 const OWNERS=['Baris','Didem U','Ivo','Patryk','Didem A'];
-const PRIOS=[{v:'now',l:'Now'},{v:'week',l:'This week'},{v:'later',l:'Later'},{v:'critical',l:'Critical'},{v:'done',l:'Done'}];
-const PRIO_LABELS={now:'Now',week:'This week',later:'Later',critical:'Critical',done:'Done'};
+const PRIOS=[{v:'high',l:'High'},{v:'medium',l:'Medium'},{v:'low',l:'Low'}];
+const PRIO_LABELS={high:'High',medium:'Medium',low:'Low'};
+const PRIO_MIGRATE={critical:'high',now:'high',week:'medium',later:'low',done:'low'};
+function normPrio(p){ p=PRIO_MIGRATE[p]||p||'medium'; return PRIO_LABELS[p]?p:'medium'; }
 const TASK_TABS=['brand','pitch','legal','product','gtm','fundraising','team','90days'];
 
 const TASKS={
@@ -841,8 +848,9 @@ function uid(){return 'c'+Date.now()+Math.floor(Math.random()*10000);}
 
 function makeItemHTML(item,tab){
   const isDone=item.done||false;
+  const prio=normPrio(item.prio);
   const wipTag=item.wip?`<span class="tag tag-wip">In progress</span>`:'';
-  return `<div class="item" data-tab="${tab}" data-id="${item.id}" data-prio="${item.prio||'later'}" data-owner="${item.owner||''}" draggable="true">
+  return `<div class="item" data-tab="${tab}" data-id="${item.id}" data-prio="${prio}" data-owner="${item.owner||''}" draggable="true">
     <div class="item-main">
       <span class="drag-handle" title="Drag to reorder">⠿</span>
       <div class="checkbox${isDone?' done':''}" onclick="toggleItem('${item.id}')"></div>
@@ -852,15 +860,15 @@ function makeItemHTML(item,tab){
         <button class="edit-note-btn" onclick="event.stopPropagation();toggleNoteEdit('${item.id}')">Edit note</button>
         <input class="note-edit-input" id="note-input-${item.id}" style="display:none" placeholder="Add a note…" value="${escHtml(item.note||'')}" onblur="saveItemNote('${item.id}',this)" onkeydown="if(event.key==='Enter')this.blur()">
         <div class="item-tags" id="tags-${item.id}">
-          <span class="tag tag-${item.prio||'later'}" id="prio-tag-${item.id}">${PRIO_LABELS[item.prio||'later']}</span>
+          <span class="tag tag-${prio}" id="prio-tag-${item.id}">${PRIO_LABELS[prio]}</span>
           <span class="deadline-tag" id="dl-tag-${item.id}" style="display:none"></span>
           <div class="owner-multi" id="owner-multi-${item.id}" style="display:inline-flex;gap:4px;flex-wrap:wrap"></div>
           ${wipTag}
         </div>
       </div>
       <div class="controls">
-        <select class="ctrl prio-${item.prio||'later'}" data-role="prio" data-id="${item.id}" onchange="setPrio('${item.id}',this)">
-          ${PRIOS.map(p=>`<option value="${p.v}"${p.v===(item.prio||'later')?' selected':''}>${p.l}</option>`).join('')}
+        <select class="ctrl prio-${prio}" data-role="prio" data-id="${item.id}" onchange="setPrio('${item.id}',this)">
+          ${PRIOS.map(p=>`<option value="${p.v}"${p.v===(prio)?' selected':''}>${p.l}</option>`).join('')}
         </select>
         <input type="date" class="deadline-input" id="dl-${item.id}" value="${item.deadline||''}" onchange="setDeadline('${item.id}',this)" onclick="event.stopPropagation()" title="Set a deadline">
         <button class="delete-btn" onclick="deleteTask('${item.id}','${tab}')" title="Delete task">×</button>
@@ -888,7 +896,7 @@ function makeAddForm(groupId,tab){
     </div>
     <div class="form-row">
       <select class="form-select" id="form-prio-${groupId}">
-        ${PRIOS.map(p=>`<option value="${p.v}"${p.v==='now'?' selected':''}>${p.l}</option>`).join('')}
+        ${PRIOS.map(p=>`<option value="${p.v}"${p.v==='medium'?' selected':''}>${p.l}</option>`).join('')}
       </select>
 
     </div>
