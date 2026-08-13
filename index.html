@@ -221,6 +221,46 @@ select.prio-low{background-color:#EFEEF6;color:#8A8AA8;border-color:var(--line)}
 .deadline-normal{background:#ECEFFA;color:#3A4A9A}
 .deadline-soon{background:#FFF3E0;color:#C07200}
 .deadline-overdue{background:#FFDFDF;color:#A81414}
+
+/* APP SHELL + SIDEBAR */
+.app{display:flex;min-height:100vh;align-items:stretch}
+.sidebar{width:250px;flex-shrink:0;background:linear-gradient(180deg,#0C1440 0%,#141A52 100%);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;padding:20px 14px}
+.sb-brand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 8px 20px}
+.sidebar .logo{font-size:19px;background:linear-gradient(90deg,#A78BFA 42%,#2FE4C6 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sb-sync{display:flex;align-items:center;gap:6px;font-size:11px;color:#8489B8;font-weight:600;white-space:nowrap}
+#sync-dot{width:7px;height:7px;border-radius:50%;background:#C4C2D8;display:inline-block;transition:background .3s}
+.sb-label{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#565C93;padding:4px 10px 8px}
+.sidebar .tab-bar{display:flex;flex-direction:column;align-items:stretch;gap:2px;overflow:visible;padding:0;background:none;border:none;flex:1}
+.sidebar .tab{padding:9px 12px;font-size:13px;font-weight:500;color:#AEB2DA;border-radius:10px;background:none;border:none;white-space:nowrap;display:flex;align-items:center;justify-content:space-between;box-shadow:none;transition:all .13s;user-select:none;order:1}
+.sidebar .tab:hover{background:rgba(255,255,255,.06);color:#fff}
+.sidebar .tab.active{background:linear-gradient(135deg,#7B5CF0,#5B3FD0);color:#fff;box-shadow:0 5px 16px rgba(91,63,208,.45)}
+.sidebar .tab-badge{background:rgba(255,255,255,.1);color:#AEB2DA;font-size:10.5px;padding:1px 7px;border-radius:10px;margin-left:8px;font-weight:700}
+.sidebar .tab.active .tab-badge{background:rgba(255,255,255,.25);color:#fff}
+.sidebar .tab.manage-tabs-btn,.sidebar .tab.add-tab-btn{color:#7A80B0;font-size:12.5px;justify-content:flex-start}
+.sidebar .tab.manage-tabs-btn{margin-top:8px;order:2}
+.sidebar .tab.manage-tabs-btn:hover{color:#fff;background:rgba(255,255,255,.06)}
+.sidebar .tab.add-tab-btn{border:1.5px dashed #363C6E;margin-top:4px;order:3}
+.sidebar .tab.add-tab-btn:hover{color:#fff;border-color:#7B5CF0;background:rgba(123,92,240,.14)}
+.sidebar .tab.tab-drag-over{box-shadow:inset 0 3px 0 #7B5CF0}
+.sb-foot{font-size:11px;color:#565C93;padding:14px 10px 2px;line-height:1.6;border-top:1px solid rgba(255,255,255,.07);margin-top:12px;font-weight:500}
+.content{flex:1;min-width:0;display:flex;flex-direction:column}
+.content .toolbar{position:sticky;top:0;z-index:60}
+main{max-width:1000px}
+
+/* PRIORITY ACCENT ON CARDS */
+.item{border-left-width:3px}
+.item[data-prio="high"]{border-left-color:#E0563E}
+.item[data-prio="medium"]{border-left-color:#E8A13D}
+.item[data-prio="low"]{border-left-color:#D3D0EA}
+
+/* OWNER AVATARS */
+.owner-multi{display:inline-flex;align-items:center}
+.owner-av{position:relative;display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;cursor:pointer;box-shadow:0 1px 3px rgba(30,45,122,.2);border:1.5px solid #fff;margin-left:-6px}
+.owner-multi>.owner-av:first-child{margin-left:0}
+.owner-av-remove{position:absolute;top:-5px;right:-5px;width:15px;height:15px;border-radius:50%;background:#fff;color:#C23B3B;font-size:11px;line-height:13px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.25);opacity:0;transition:opacity .12s;border:1px solid #F0EFF8}
+.owner-av:hover .owner-av-remove{opacity:1}
+.owner-multi>.owner-av-add{background:#EFEEF6;color:#9A98B4;font-size:15px;font-weight:600;border:1.5px dashed #C9C6E0;box-shadow:none;margin-left:6px}
+.owner-multi>.owner-av-add:hover{background:var(--purpleL);color:var(--purple);border-color:#C9BEF7}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -475,62 +515,65 @@ window.startFirebaseListeners = function() {
 </script>
 </head>
 <body>
-<header>
-  <div class="logo">VOXSPAN</div>
-  <div style="display:flex;align-items:center;gap:12px">
-    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#8A8AA8">
-      <span id="sync-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C4C2D8;transition:background .3s"></span>
-      <span id="sync-lbl">Live</span>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="logo">VOXSPAN</div>
+      <div class="sb-sync"><span id="sync-dot"></span><span id="sync-lbl">Live</span></div>
     </div>
-    <div class="header-right">Launch Dashboard &nbsp;·&nbsp; March 2026</div>
-  </div>
-</header>
-<div class="overview" id="overview-bar" style="opacity:0;transition:opacity .4s">
-  <div class="overview-top">
-    <div><div class="overall-label">Overall progress</div><div class="overall-pct" id="overall-pct">0%</div></div>
-    <div class="mini-stats">
-      <div><div class="mini-stat-num" id="stat-done">0</div><div class="mini-stat-label">Done</div></div>
-      <div><div class="mini-stat-num" id="stat-left">0</div><div class="mini-stat-label">Left</div></div>
-      <div><div class="mini-stat-num" id="stat-total">0</div><div class="mini-stat-label">Total</div></div>
+    <div class="sb-label">Boards</div>
+    <nav class="tab-bar">
+      <div class="tab active" id="tab-brand" onclick="showTab('brand',this)">Brand <span class="tab-badge" id="badge-brand"></span></div>
+      <div class="tab" id="tab-pitch" onclick="showTab('pitch',this)">Pitch Deck <span class="tab-badge" id="badge-pitch"></span></div>
+      <div class="tab" id="tab-legal" onclick="showTab('legal',this)">Legal <span class="tab-badge" id="badge-legal"></span></div>
+      <div class="tab" id="tab-product" onclick="showTab('product',this)">Product <span class="tab-badge" id="badge-product"></span></div>
+      <div class="tab" id="tab-gtm" onclick="showTab('gtm',this)">GTM <span class="tab-badge" id="badge-gtm"></span></div>
+      <div class="tab" id="tab-fundraising" onclick="showTab('fundraising',this)">Fundraising <span class="tab-badge" id="badge-fundraising"></span></div>
+      <div class="tab" id="tab-team" onclick="showTab('team',this)">Team <span class="tab-badge" id="badge-team"></span></div>
+      <div class="tab" id="tab-investors" onclick="showTab('investors',this)">Investors</div>
+      <div class="tab" id="tab-b2b" onclick="showTab('b2b',this)">B2B Pipeline</div>
+      <div class="tab" id="tab-90days" onclick="showTab('90days',this)">90-Day Plan <span class="tab-badge" id="badge-90days"></span></div>
+      <div class="tab" id="tab-focus" onclick="showTab('focus',this)">⚡ Today's Focus <span class="tab-badge" id="badge-focus"></span></div>
+      <div class="tab manage-tabs-btn" onclick="openManageTabsModal()" title="Show/hide tabs">⚙ Manage</div>
+      <div class="tab add-tab-btn" id="add-tab-btn" onclick="openAddTabForm()" title="Add new tab">+ New board</div>
+    </nav>
+    <div class="sb-foot">Launch Dashboard<br>March 2026</div>
+  </aside>
+
+  <div class="content">
+    <div class="overview" id="overview-bar" style="opacity:0;transition:opacity .4s">
+      <div class="overview-top">
+        <div><div class="overall-label">Overall progress</div><div class="overall-pct" id="overall-pct">0%</div></div>
+        <div class="mini-stats">
+          <div><div class="mini-stat-num" id="stat-done">0</div><div class="mini-stat-label">Done</div></div>
+          <div><div class="mini-stat-num" id="stat-left">0</div><div class="mini-stat-label">Left</div></div>
+          <div><div class="mini-stat-num" id="stat-total">0</div><div class="mini-stat-label">Total</div></div>
+        </div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" id="overall-fill" style="width:0%"></div></div>
     </div>
+    <div class="toolbar">
+      <input class="search-box" id="search-box" type="text" placeholder="Search tasks…" oninput="applyFilters()">
+      <span class="filter-label">Owner:</span>
+      <select class="filter-select" id="filter-owner" onchange="applyFilters()">
+        <option value="">Everyone</option>
+        <option>Baris</option><option>Didem U</option><option>Ivo</option><option>Patryk</option><option>Didem A</option>
+      </select>
+      <span class="filter-label">Priority:</span>
+      <select class="filter-select" id="filter-prio" onchange="applyFilters()">
+        <option value="">All</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <button class="clear-btn" onclick="clearFilters()">Clear</button>
+      <span class="search-count" id="search-count"></span>
+    </div>
+    <main id="main-content">
+      <div class="no-results" id="no-results">No tasks match your filters.</div>
+    </main>
   </div>
-  <div class="prog-bar"><div class="prog-fill" id="overall-fill" style="width:0%"></div></div>
 </div>
-<div class="toolbar">
-  <input class="search-box" id="search-box" type="text" placeholder="Search tasks…" oninput="applyFilters()">
-  <span class="filter-label">Owner:</span>
-  <select class="filter-select" id="filter-owner" onchange="applyFilters()">
-    <option value="">Everyone</option>
-    <option>Baris</option><option>Didem U</option><option>Ivo</option><option>Patryk</option><option>Didem A</option>
-  </select>
-  <span class="filter-label">Priority:</span>
-  <select class="filter-select" id="filter-prio" onchange="applyFilters()">
-    <option value="">All</option>
-    <option value="high">High</option>
-    <option value="medium">Medium</option>
-    <option value="low">Low</option>
-  </select>
-  <button class="clear-btn" onclick="clearFilters()">Clear</button>
-  <span class="search-count" id="search-count"></span>
-</div>
-<div class="tab-bar">
-  <div class="tab active" id="tab-brand" onclick="showTab('brand',this)">Brand <span class="tab-badge" id="badge-brand"></span></div>
-  <div class="tab" id="tab-pitch" onclick="showTab('pitch',this)">Pitch Deck <span class="tab-badge" id="badge-pitch"></span></div>
-  <div class="tab" id="tab-legal" onclick="showTab('legal',this)">Legal <span class="tab-badge" id="badge-legal"></span></div>
-  <div class="tab" id="tab-product" onclick="showTab('product',this)">Product <span class="tab-badge" id="badge-product"></span></div>
-  <div class="tab" id="tab-gtm" onclick="showTab('gtm',this)">GTM <span class="tab-badge" id="badge-gtm"></span></div>
-  <div class="tab" id="tab-fundraising" onclick="showTab('fundraising',this)">Fundraising <span class="tab-badge" id="badge-fundraising"></span></div>
-  <div class="tab" id="tab-team" onclick="showTab('team',this)">Team <span class="tab-badge" id="badge-team"></span></div>
-  <div class="tab" id="tab-investors" onclick="showTab('investors',this)">Investors</div>
-  <div class="tab" id="tab-b2b" onclick="showTab('b2b',this)">B2B Pipeline</div>
-  <div class="tab" id="tab-90days" onclick="showTab('90days',this)">90-Day Plan <span class="tab-badge" id="badge-90days"></span></div>
-  <div class="tab" id="tab-focus" onclick="showTab('focus',this)">⚡ Today's Focus <span class="tab-badge" id="badge-focus"></span></div>
-  <div class="tab manage-tabs-btn" onclick="openManageTabsModal()" title="Show/hide tabs">⚙</div>
-  <div class="tab add-tab-btn" id="add-tab-btn" onclick="openAddTabForm()" title="Add new tab">+ Tab</div>
-</div>
-<main id="main-content">
-  <div class="no-results" id="no-results">No tasks match your filters.</div>
-</main>
 
 <script>
 const OWNERS=['Baris','Didem U','Ivo','Patryk','Didem A'];
@@ -691,15 +734,17 @@ let ownerMap={};  // id -> [owner1, owner2, ...]
 
 function getOwners(id){ return ownerMap[id]||[]; }
 
+function ownerInitials(n){ const p=n.trim().split(/\s+/); return ((p[0]||'')[0]+(p[1]?p[1][0]:'')).toUpperCase(); }
+function ownerColor(n){ const c=['#5B3FD0','#3D6BE8','#00A882','#E0563E','#E8A13D','#7B5CF0','#0EA5A0','#C2478B']; let h=0; for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))>>>0; return c[h%c.length]; }
 function renderOwnerChips(id){
   const multi=document.getElementById('owner-multi-'+id);
   const tagSpan=document.getElementById('owner-tag-'+id);
   if(!multi)return;
   const owners=getOwners(id);
   multi.innerHTML=owners.map(o=>
-    `<span class="owner-chip" title="${o}">${o}<span class="owner-chip-remove" onclick="event.stopPropagation();removeOwner('${id}','${o}')">×</span></span>`
+    `<span class="owner-av" title="${o}" style="background:${ownerColor(o)}">${ownerInitials(o)}<span class="owner-av-remove" onclick="event.stopPropagation();removeOwner('${id}','${o}')">×</span></span>`
   ).join('')+
-  `<span class="owner-chip owner-chip-add" onclick="event.stopPropagation();showOwnerDropdown('${id}',this)">+ Add</span>`;
+  `<span class="owner-av owner-av-add" title="Add owner" onclick="event.stopPropagation();showOwnerDropdown('${id}',this)">+</span>`;
   // update inline tag in text-block
   if(tagSpan){
     tagSpan.innerHTML=owners.map(o=>`<span class="owner-tag">${o}</span>`).join('');
