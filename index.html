@@ -261,6 +261,33 @@ main{max-width:1000px}
 .owner-av:hover .owner-av-remove{opacity:1}
 .owner-multi>.owner-av-add{background:#EFEEF6;color:#9A98B4;font-size:15px;font-weight:600;border:1.5px dashed #C9C6E0;box-shadow:none;margin-left:6px}
 .owner-multi>.owner-av-add:hover{background:var(--purpleL);color:var(--purple);border-color:#C9BEF7}
+
+/* KANBAN BOARD (segments as columns) */
+.board{display:flex;gap:16px;overflow-x:auto;align-items:flex-start;padding:2px 2px 16px}
+.board .group{width:322px;flex-shrink:0;margin-bottom:0;background:#EDEEF6;border-radius:16px;padding:12px 12px 8px}
+.board .group-label{margin-bottom:12px;color:#5A5F86}
+.board .phase-pill{margin-bottom:12px}
+.board .items-container{display:flex;flex-direction:column}
+.board .add-task-btn{background:rgba(255,255,255,.55);border-color:#DAD8EC}
+.board .add-task-btn:hover{background:#fff}
+.board>.add-group-btn{width:230px;flex-shrink:0;align-self:stretch;min-height:150px;flex-direction:column;justify-content:center;background:none;border:1.5px dashed #D3D0EA;border-radius:16px}
+main{max-width:none}
+/* vertical card layout inside columns */
+.board .item-main{grid-template-columns:20px 1fr;gap:9px;padding:12px 13px}
+.board .drag-handle{display:none}
+.board .item-tags>.tag,.board .item-tags>.deadline-tag{display:none}
+.board .item-tags{margin-top:8px}
+.board .controls{grid-column:1 / -1;flex-direction:row;align-items:center;gap:8px;margin-top:8px}
+.board select.ctrl{min-width:0}
+.board .deadline-input{flex:1;width:auto;min-width:90px}
+.board .delete-btn{margin-left:auto}
+.board .item-comment-wrap{padding:0 13px 10px 13px}
+.add-group-form{display:none}
+.add-group-form.open{display:flex;flex-direction:column;gap:10px}
+.add-group-form-actions{display:flex;gap:8px;justify-content:flex-end}
+.add-group-form input{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-family:inherit;color:var(--ink);outline:none;background:var(--bg)}
+.add-group-form input:focus{border-color:var(--purple);background:#fff}
+.board>.add-group-form.open{width:230px;flex-shrink:0;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -518,7 +545,7 @@ window.startFirebaseListeners = function() {
 <div class="app">
   <aside class="sidebar">
     <div class="sb-brand">
-      <div class="logo">VOXSPAN</div>
+      <div class="logo">VOXCOUNT</div>
       <div class="sb-sync"><span id="sync-dot"></span><span id="sync-lbl">Live</span></div>
     </div>
     <div class="sb-label">Boards</div>
@@ -1167,7 +1194,8 @@ function renderGroup(groupId, label, tab) {
     `<div class="group-label" contenteditable="true" onblur="saveGroupLabel('${groupId}',this)">${escHtml(label)}</div>` +
     `<div class="items-container" id="items-${groupId}"></div>` +
     makeAddForm(groupId, tab);
-  panel.insertBefore(groupDiv, addBtn || null);
+  const board = (addBtn && addBtn.parentNode) || panel.querySelector('.board') || panel;
+  board.insertBefore(groupDiv, addBtn || null);
   // Wire Enter key
   const inp = document.getElementById('form-title-' + groupId);
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(groupId, tab); });
@@ -1232,6 +1260,7 @@ function renderTab(tabId, label, firstSegLabel) {
   customGroups[segId] = { label: firstSegLabel, tab: tabId };
   panel.innerHTML =
     `<div class="section-prog"><div class="sec-bar"><div class="sec-bar-fill" id="bar-${tabId}"></div></div><div class="sec-pct" id="pct-${tabId}">0%</div></div>` +
+    `<div class="board" id="board-${tabId}">` +
     `<div class="group" id="group-${segId}">` +
     `<div class="group-label" contenteditable="true" onblur="saveGroupLabel('${segId}',this)">${escHtml(firstSegLabel)}</div>` +
     `<div class="items-container" id="items-${segId}"></div>` +
@@ -1241,7 +1270,8 @@ function renderTab(tabId, label, firstSegLabel) {
     `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add segment</button>` +
     `<div class="add-group-form" id="add-group-form-${tabId}">` +
     `<input id="new-group-input-${tabId}" placeholder="Segment name…" onkeydown="if(event.key==='Enter')addGroup('${tabId}')">` +
-    `<div class="add-group-form-actions"><button class="btn-cancel" onclick="openAddGroupForm('${tabId}')">Cancel</button><button class="btn-add" onclick="addGroup('${tabId}')">Add segment</button></div></div>`;
+    `<div class="add-group-form-actions"><button class="btn-cancel" onclick="openAddGroupForm('${tabId}')">Cancel</button><button class="btn-add" onclick="addGroup('${tabId}')">Add segment</button></div></div>` +
+    `</div>`;
   main.appendChild(panel);
 
   // Wire Enter key for first segment form
@@ -1258,7 +1288,9 @@ function buildTasks(){
     const panel=document.createElement('div');
     panel.className='panel'+(tab==='brand'?' active':'');
     panel.id='panel-'+tab;
+    const noBoard=['investors','b2b','focus'].includes(tab);
     let html=`<div class="section-prog"><div class="sec-bar"><div class="sec-bar-fill" id="bar-${tab}"></div></div><div class="sec-pct" id="pct-${tab}">0%</div></div>`;
+    html+=`<div class="board" id="board-${tab}">`;
     data.groups.forEach(g=>{
       html+=`<div class="group" id="group-${g.id}">`;
       if(g.phase){html+=`<div class="phase-pill">${g.label}</div>`;}
@@ -1269,18 +1301,18 @@ function buildTasks(){
       html+=makeAddForm(g.id,tab);
       html+='</div>';
     });
-    if(data.noteId){
-      html+=`<div class="notes-section"><div class="notes-label">Tab notes</div>
-        <textarea class="notes-box" id="${data.noteId}" placeholder="${data.notePlaceholder}" oninput="saveTabNote('${tab}')"></textarea>
-        <div class="notes-saved" id="saved-${tab}">Saved</div></div>`;
-    }
-    // Add segment button at bottom of each task tab
-    if (!['investors','b2b','focus'].includes(tab)) {
+    if(!noBoard){
       html += `<button class="add-group-btn" id="add-group-btn-${tab}" onclick="openAddGroupForm('${tab}')">` +
         `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add segment</button>` +
         `<div class="add-group-form" id="add-group-form-${tab}">` +
         `<input id="new-group-input-${tab}" placeholder="Segment name…" onkeydown="if(event.key==='Enter')addGroup('${tab}')">` +
         `<div class="add-group-form-actions"><button class="btn-cancel" onclick="openAddGroupForm('${tab}')">Cancel</button><button class="btn-add" onclick="addGroup('${tab}')">Add segment</button></div></div>`;
+    }
+    html+=`</div>`;
+    if(data.noteId){
+      html+=`<div class="notes-section"><div class="notes-label">Tab notes</div>
+        <textarea class="notes-box" id="${data.noteId}" placeholder="${data.notePlaceholder}" oninput="saveTabNote('${tab}')"></textarea>
+        <div class="notes-saved" id="saved-${tab}">Saved</div></div>`;
     }
     panel.innerHTML=html;
     main.appendChild(panel);
