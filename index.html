@@ -264,7 +264,11 @@ main{max-width:1000px}
 
 /* KANBAN BOARD (segments as columns) */
 .board{display:flex;gap:16px;overflow-x:auto;align-items:flex-start;padding:2px 2px 16px}
-.board .group{width:322px;flex-shrink:0;margin-bottom:0;background:#EDEEF6;border-radius:16px;padding:12px 12px 8px}
+.board .group{width:322px;flex-shrink:0;margin-bottom:0;background:#EDEEF6;border-radius:16px;padding:12px 12px 8px;position:relative}
+.del-group{position:absolute;top:9px;right:9px;width:23px;height:23px;border:none;background:rgba(30,45,122,.05);color:#9A98B4;font-size:16px;line-height:1;border-radius:7px;cursor:pointer;opacity:0;transition:all .12s;z-index:3}
+.board .group:hover .del-group{opacity:1}
+.del-group:hover{background:#FFDFDF;color:#C23B3B}
+.board .group-label{padding-right:28px}
 .board .group-label{margin-bottom:12px;color:#5A5F86}
 .board .phase-pill{margin-bottom:12px}
 .board .items-container{display:flex;flex-direction:column}
@@ -300,6 +304,7 @@ const addedCustomIds = new Set();
 // These must be declared early so collectState can reference them
 let customGroups = {};
 let customTabs = {};
+let deletedGroups = new Set();
 
 try {
   firebase.initializeApp({
@@ -371,13 +376,18 @@ function collectState() {
   const tabOrder = [...document.querySelectorAll('.tab-bar .tab')]
     .filter(t => t.id && t.id !== 'add-tab-btn')
     .map(t => t.id);
-  return { tasks, notes, customGroups, customTabs, order, tabOrder };
+  return { tasks, notes, customGroups, customTabs, order, tabOrder, deletedGroups: [...deletedGroups] };
 }
 
 // Apply state from Firebase onto DOM
 function applySnapshot(data) {
   if (!data) return;
   const { tasks, notes, order } = data;
+
+  // Restore deleted segments (base or custom stay removed across reloads)
+  if (data.deletedGroups) {
+    data.deletedGroups.forEach(gid => { deletedGroups.add(gid); const el = document.getElementById('group-' + gid); if (el) el.remove(); });
+  }
 
   // Restore custom tabs
   if (data.customTabs) {
@@ -391,6 +401,7 @@ function applySnapshot(data) {
   // Restore custom groups
   if (data.customGroups) {
     Object.keys(data.customGroups).forEach(groupId => {
+      if (deletedGroups.has(groupId)) return; // deleted → don't re-add
       if (document.getElementById('group-' + groupId)) return; // already exists
       const g = data.customGroups[groupId];
       customGroups[groupId] = g;
@@ -1191,6 +1202,7 @@ function renderGroup(groupId, label, tab) {
   groupDiv.className = 'group';
   groupDiv.id = 'group-' + groupId;
   groupDiv.innerHTML =
+    `<button class="del-group" onclick="deleteGroup('${groupId}','${tab}')" title="Delete segment">×</button>` +
     `<div class="group-label" contenteditable="true" onblur="saveGroupLabel('${groupId}',this)">${escHtml(label)}</div>` +
     `<div class="items-container" id="items-${groupId}"></div>` +
     makeAddForm(groupId, tab);
@@ -1206,6 +1218,18 @@ function saveGroupLabel(groupId, el) {
   if (!val) { el.textContent = customGroups[groupId]?.label || 'New segment'; return; }
   if (customGroups[groupId]) customGroups[groupId].label = val;
   saveState();
+}
+
+function deleteGroup(groupId, tab) {
+  const el = document.getElementById('group-' + groupId);
+  const count = el ? el.querySelectorAll('.item[data-id]').length : 0;
+  if (count > 0 && !confirm('Delete this segment and its ' + count + ' task(s)?')) return;
+  deletedGroups.add(groupId);
+  if (el) el.remove();
+  delete customGroups[groupId];
+  try { delete customTasks[groupId]; } catch (e) {}
+  saveState();
+  if (window.updateAll) updateAll();
 }
 
 // ── New tab ───────────────────────────────────────────────────────────────────
@@ -1261,7 +1285,7 @@ function renderTab(tabId, label, firstSegLabel) {
   panel.innerHTML =
     `<div class="section-prog"><div class="sec-bar"><div class="sec-bar-fill" id="bar-${tabId}"></div></div><div class="sec-pct" id="pct-${tabId}">0%</div></div>` +
     `<div class="board" id="board-${tabId}">` +
-    `<div class="group" id="group-${segId}">` +
+    `<div class="group" id="group-${segId}"><button class="del-group" onclick="deleteGroup('${segId}','${tabId}')" title="Delete segment">×</button>` +
     `<div class="group-label" contenteditable="true" onblur="saveGroupLabel('${segId}',this)">${escHtml(firstSegLabel)}</div>` +
     `<div class="items-container" id="items-${segId}"></div>` +
     makeAddForm(segId, tabId) +
@@ -1292,7 +1316,7 @@ function buildTasks(){
     let html=`<div class="section-prog"><div class="sec-bar"><div class="sec-bar-fill" id="bar-${tab}"></div></div><div class="sec-pct" id="pct-${tab}">0%</div></div>`;
     html+=`<div class="board" id="board-${tab}">`;
     data.groups.forEach(g=>{
-      html+=`<div class="group" id="group-${g.id}">`;
+      html+=`<div class="group" id="group-${g.id}"><button class="del-group" onclick="deleteGroup('${g.id}','${tab}')" title="Delete segment">×</button>`;
       if(g.phase){html+=`<div class="phase-pill">${g.label}</div>`;}
       else{html+=`<div class="group-label">${g.label}</div>`;}
       html+=`<div class="items-container" id="items-${g.id}">`;
