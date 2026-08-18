@@ -169,6 +169,25 @@ select.owner-none{background-color:#EFEEF6;color:#8A8AA8;border-color:var(--line
 .focus-section-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A98B4;margin:1.5rem 0 .7rem;display:flex;align-items:center;gap:8px}
 .focus-section-label::after{content:'';flex:1;height:1px;background:var(--line)}
 .focus-section-label:first-child{margin-top:0}
+/* Notes board (quick notepad) */
+.notepad-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.3rem;gap:1rem;flex-wrap:wrap}
+.notepad-title{font-size:15px;font-weight:700;color:var(--ink)}
+.notepad-title span{color:var(--muted);font-weight:500;font-size:13px;margin-left:6px}
+.notepad-add{display:inline-flex;align-items:center;gap:7px;background:var(--purple);color:#fff;border:none;border-radius:10px;padding:.6rem 1rem;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+.notepad-add:hover{background:#4a32b0}
+.notepad-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1rem;align-items:start}
+.note-card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px}
+.note-card[data-prio="high"]{border-left-color:#E5484D}
+.note-card[data-prio="medium"]{border-left-color:#F5A623}
+.note-card[data-prio="low"]{border-left-color:#30A46C}
+.note-text{width:100%;min-height:82px;border:none;outline:none;resize:vertical;font-family:inherit;font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent}
+.note-text::placeholder{color:#C4C2D8}
+.note-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+.note-date,.note-prio{border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:11.5px;font-family:inherit;color:var(--muted);background:var(--card);outline:none;cursor:pointer}
+.note-date:focus,.note-prio:focus{border-color:var(--purple)}
+.note-del{margin-left:auto;background:none;border:none;color:#C4C2D8;font-size:16px;cursor:pointer;line-height:1;padding:2px 5px;border-radius:6px;transition:color .15s,background .15s}
+.note-del:hover{color:#E5484D;background:rgba(229,72,77,.08)}
+.notepad-empty{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:14px}
 
 /* OWNER CHIPS */
 .owner-multi{display:flex;gap:5px;flex-wrap:wrap}
@@ -305,6 +324,7 @@ const addedCustomIds = new Set();
 let customGroups = {};
 let customTabs = {};
 let deletedGroups = new Set();
+let notepad = [];  // quick-notes board: [{id,text,date,prio}]
 
 try {
   firebase.initializeApp({
@@ -376,7 +396,7 @@ function collectState() {
   const tabOrder = [...document.querySelectorAll('.tab-bar .tab')]
     .filter(t => t.id && t.id !== 'add-tab-btn')
     .map(t => t.id);
-  return { tasks, notes, customGroups, customTabs, order, tabOrder, deletedGroups: [...deletedGroups] };
+  return { tasks, notes, customGroups, customTabs, order, tabOrder, deletedGroups: [...deletedGroups], notepad };
 }
 
 // Apply state from Firebase onto DOM
@@ -490,6 +510,12 @@ function applySnapshot(data) {
     });
   }
 
+  if (Array.isArray(data.notepad)) {
+    notepad = data.notepad;
+    const np = document.getElementById('panel-notepad');
+    if (np && np.classList.contains('active') && !np.contains(document.activeElement)) renderNotepad();
+  }
+
   // Restore tab order
   if (data.tabOrder && data.tabOrder.length) {
     const tabBar = document.querySelector('.tab-bar');
@@ -572,6 +598,7 @@ window.startFirebaseListeners = function() {
       <div class="tab" id="tab-b2b" onclick="showTab('b2b',this)">B2B Pipeline</div>
       <div class="tab" id="tab-90days" onclick="showTab('90days',this)">90-Day Plan <span class="tab-badge" id="badge-90days"></span></div>
       <div class="tab" id="tab-focus" onclick="showTab('focus',this)">⚡ Today's Focus <span class="tab-badge" id="badge-focus"></span></div>
+      <div class="tab" id="tab-notepad" onclick="showTab('notepad',this)">📝 Notes <span class="tab-badge" id="badge-notepad"></span></div>
       <div class="tab manage-tabs-btn" onclick="openManageTabsModal()" title="Show/hide tabs">⚙ Manage</div>
       <div class="tab add-tab-btn" id="add-tab-btn" onclick="openAddTabForm()" title="Add new tab">+ New board</div>
     </nav>
@@ -996,11 +1023,11 @@ function escHtml(s){
 }
 
 // ── Manage tabs (show/hide) ───────────────────────────────────────────────────
-const ALL_DEFAULT_TABS = ['brand','pitch','legal','product','gtm','fundraising','team','investors','b2b','90days','focus'];
+const ALL_DEFAULT_TABS = ['brand','pitch','legal','product','gtm','fundraising','team','investors','b2b','90days','focus','notepad'];
 const DEFAULT_TAB_LABELS = {
   brand:'Brand', pitch:'Pitch Deck', legal:'Legal', product:'Product',
   gtm:'GTM', fundraising:'Fundraising', team:'Team', investors:'Investors',
-  b2b:'B2B Pipeline', '90days':'90-Day Plan', focus:"Today's Focus"
+  b2b:'B2B Pipeline', '90days':'90-Day Plan', focus:"Today's Focus", notepad:'📝 Notes'
 };
 
 function openManageTabsModal() {
@@ -1376,6 +1403,65 @@ function buildTasks(){
   focus.id='panel-focus';
   focus.innerHTML='<div class="focus-empty">Loading…</div>';
   main.appendChild(focus);
+
+  // Notes board (quick notepad)
+  const npPanel=document.createElement('div');
+  npPanel.className='panel';
+  npPanel.id='panel-notepad';
+  main.appendChild(npPanel);
+  renderNotepad();
+}
+
+// ---- Notes board (quick notepad) ----
+function escNote(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function renderNotepad(){
+  const panel=document.getElementById('panel-notepad');
+  if(!panel)return;
+  const badge=document.getElementById('badge-notepad');
+  if(badge)badge.textContent=notepad.length||'';
+  let html='<div class="notepad-head">'
+    +'<div class="notepad-title">Quick notes <span>'+notepad.length+(notepad.length===1?' note':' notes')+'</span></div>'
+    +'<button class="notepad-add" onclick="addNote()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New note</button>'
+    +'</div>';
+  if(!notepad.length){
+    html+='<div class="notepad-empty">No notes yet. Hit “New note” to jot something down.</div>';
+    panel.innerHTML=html; return;
+  }
+  html+='<div class="notepad-grid">';
+  notepad.forEach(n=>{
+    const prio=n.prio||'medium';
+    html+='<div class="note-card" data-prio="'+prio+'" data-nid="'+n.id+'">'
+      +'<textarea class="note-text" placeholder="Write a note…" oninput="updateNote(\''+n.id+'\',\'text\',this.value)">'+escNote(n.text)+'</textarea>'
+      +'<div class="note-foot">'
+      +'<input type="date" class="note-date" value="'+(n.date||'')+'" onchange="updateNote(\''+n.id+'\',\'date\',this.value)">'
+      +'<select class="note-prio" onchange="updateNote(\''+n.id+'\',\'prio\',this.value)">'
+      +['high','medium','low'].map(p=>'<option value="'+p+'"'+(p===prio?' selected':'')+'>'+({high:'High',medium:'Medium',low:'Low'}[p])+'</option>').join('')
+      +'</select>'
+      +'<button class="note-del" title="Delete note" onclick="deleteNote(\''+n.id+'\')">×</button>'
+      +'</div></div>';
+  });
+  html+='</div>';
+  panel.innerHTML=html;
+}
+function addNote(){
+  notepad.unshift({id:uid(),text:'',date:'',prio:'medium'});
+  renderNotepad();
+  if(window.saveToFirebase)window.saveToFirebase();
+  const first=document.querySelector('#panel-notepad .note-text');
+  if(first)first.focus();
+}
+function updateNote(id,field,val){
+  const n=notepad.find(x=>x.id===id);
+  if(!n)return;
+  n[field]=val;
+  if(field==='prio'){const card=document.querySelector('.note-card[data-nid="'+id+'"]');if(card)card.dataset.prio=val;}
+  clearTimeout(window._noteSaveT);
+  window._noteSaveT=setTimeout(()=>{if(window.saveToFirebase)window.saveToFirebase();},600);
+}
+function deleteNote(id){
+  notepad=notepad.filter(x=>x.id!==id);
+  renderNotepad();
+  if(window.saveToFirebase)window.saveToFirebase();
 }
 
 function openForm(groupId){
@@ -1435,6 +1521,7 @@ function showTab(id,el){
   document.getElementById('panel-'+id).classList.add('active');
   el.classList.add('active');
   if(id==='focus')refreshFocusTab();
+  if(id==='notepad')renderNotepad();
   applyFilters();
 }
 
