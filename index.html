@@ -187,7 +187,9 @@ select.owner-none{background-color:#EFEEF6;color:#8A8AA8;border-color:var(--line
 .note-date:focus,.note-prio:focus{border-color:var(--purple)}
 .note-del{margin-left:auto;background:none;border:none;color:#C4C2D8;font-size:16px;cursor:pointer;line-height:1;padding:2px 5px;border-radius:6px;transition:color .15s,background .15s}
 .note-del:hover{color:#E5484D;background:rgba(229,72,77,.08)}
-.notepad-empty{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:14px}
+.notepad-empty{text-align:left;padding:2rem 0;color:var(--muted);font-size:14px}
+/* Notes tab: let main fill the width (other tabs keep their layout) */
+main#main-content.np-full{margin-left:0;margin-right:0;width:100%;max-width:none}
 
 /* OWNER CHIPS */
 .owner-multi{display:flex;gap:5px;flex-wrap:wrap}
@@ -1522,6 +1524,8 @@ function showTab(id,el){
   el.classList.add('active');
   if(id==='focus')refreshFocusTab();
   if(id==='notepad')renderNotepad();
+  const _mc=document.getElementById('main-content');
+  if(_mc)_mc.classList.toggle('np-full', id==='notepad');
   applyFilters();
 }
 
