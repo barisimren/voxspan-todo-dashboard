@@ -60,8 +60,10 @@ header{background:rgba(255,255,255,.82);backdrop-filter:blur(12px);border-bottom
 .tab.manage-tabs-btn{color:var(--muted);padding:6px 8px;background:none;border:none;cursor:pointer;font-size:16px;line-height:1;border-radius:8px}
 .tab.manage-tabs-btn:hover{color:var(--purple);background:var(--purpleL)}
 
-/* MAIN */
-main{max-width:1040px;margin:0 auto;padding:1.8rem 1.5rem 4rem}
+/* MAIN — full width, left-aligned for ALL tabs (boards read best flush-left, not
+   floating centered in a narrow column). Notes' np-full override is now redundant
+   but harmless. */
+main{max-width:none;margin:0;width:100%;padding:1.8rem 2rem 4rem}
 .section-prog{display:flex;align-items:center;gap:12px;margin-bottom:1.8rem}
 .sec-bar{flex:1;height:6px;background:#EEECF8;border-radius:20px;overflow:hidden}
 .sec-bar-fill{height:100%;background:linear-gradient(90deg,#5B3FD0,#00D4A8);border-radius:20px;transition:width .4s}
