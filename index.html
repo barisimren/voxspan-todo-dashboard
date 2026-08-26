@@ -1376,7 +1376,6 @@ function renderTab(tabId, label, firstSegLabel) {
   customGroups[segId] = { label: firstSegLabel, tab: tabId };
   panel.innerHTML =
     `<div class="board-head"><h1 class="board-title">${escHtml(label)}</h1><div class="board-sub" id="bsub-${tabId}"></div></div>` +
-    `<div class="section-prog"><div class="sec-bar"><div class="sec-bar-fill" id="bar-${tabId}"></div></div><div class="sec-pct" id="pct-${tabId}">0%</div></div>` +
     `<div class="board" id="board-${tabId}">` +
     `<div class="group" id="group-${segId}"><button class="del-group" onclick="deleteGroup('${segId}','${tabId}')" title="Delete segment">×</button><span class="col-count" id="cc-${segId}"></span>` +
     `<div class="group-label" contenteditable="true" onblur="saveGroupLabel('${segId}',this)">${escHtml(firstSegLabel)}</div>` +
@@ -1415,7 +1414,7 @@ function buildTasks(){
     panel.id='panel-'+tab;
     const noBoard=['investors','b2b','focus'].includes(tab);
     const showHead=TASK_TABS.includes(tab);
-    let html=(showHead?`<div class="board-head"><h1 class="board-title">${escHtml(boardLabel(tab))}</h1><div class="board-sub" id="bsub-${tab}"></div></div>`:'')+`<div class="section-prog"><div class="sec-bar"><div class="sec-bar-fill" id="bar-${tab}"></div></div><div class="sec-pct" id="pct-${tab}">0%</div></div>`;
+    let html=(showHead?`<div class="board-head"><h1 class="board-title">${escHtml(boardLabel(tab))}</h1><div class="board-sub" id="bsub-${tab}"></div></div>`:'');
     html+=`<div class="board" id="board-${tab}">`;
     data.groups.forEach(g=>{
       html+=`<div class="group" id="group-${g.id}"><button class="del-group" onclick="deleteGroup('${g.id}','${tab}')" title="Delete segment">×</button><span class="col-count" id="cc-${g.id}"></span>`;
