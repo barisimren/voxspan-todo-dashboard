@@ -1095,13 +1095,24 @@ const DEFAULT_TAB_LABELS = {
   b2b:'B2B Pipeline', '90days':'90-Day Plan', focus:"Today's Focus", notepad:'📝 Notes'
 };
 
+// Every board that can be shown/hidden — the 12 built-ins PLUS any custom boards
+// created via "+ New board" (stored in customTabs). Used by both the Manage modal
+// and applyHiddenTabs so nothing is left out.
+function allManageableTabs() {
+  const rows = ALL_DEFAULT_TABS.map(tab => ({ tab, label: DEFAULT_TAB_LABELS[tab] }));
+  if (typeof customTabs !== 'undefined') {
+    Object.keys(customTabs).forEach(tab => rows.push({ tab, label: customTabs[tab] }));
+  }
+  return rows;
+}
+
 function openManageTabsModal() {
   const list = document.getElementById('manage-tabs-list');
   const hidden = getHiddenTabs();
-  list.innerHTML = ALL_DEFAULT_TABS.map(tab => {
+  list.innerHTML = allManageableTabs().map(({ tab, label }) => {
     const isHidden = hidden.includes(tab);
     return `<div class="manage-tab-row">
-      <span>${DEFAULT_TAB_LABELS[tab]}</span>
+      <span>${escHtml(label)}</span>
       <label class="toggle-switch">
         <input type="checkbox" ${isHidden ? '' : 'checked'} onchange="toggleTabVisibility('${tab}', this.checked)">
         <span class="toggle-slider"></span>
@@ -1135,10 +1146,17 @@ function toggleTabVisibility(tab, visible) {
 
 function applyHiddenTabs() {
   const hidden = getHiddenTabs();
-  ALL_DEFAULT_TABS.forEach(tab => {
+  allManageableTabs().forEach(({ tab }) => {
     const tabEl = document.getElementById('tab-' + tab);
     if (tabEl) tabEl.style.display = hidden.includes(tab) ? 'none' : '';
   });
+  // If the board you're currently viewing just got hidden, jump to the first visible one.
+  const activeHidden = hidden.some(tab => document.getElementById('tab-' + tab)?.classList.contains('active'));
+  if (activeHidden) {
+    const firstVisible = allManageableTabs().map(x => x.tab).find(t => !hidden.includes(t));
+    const el = firstVisible && document.getElementById('tab-' + firstVisible);
+    if (el) showTab(firstVisible, el);
+  }
 }
 
 // ── Edit title ───────────────────────────────────────────────────────────────
